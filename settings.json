@@ -1,0 +1,68 @@
+{
+  // "editor.unicodeHighlight.nonBasicASCII": false,
+  "python.defaultInterpreterPath": "c:\\python\\v3.10.8python\\Scripts\\python.exe",
+  "[python]": {
+    "editor.defaultFormatter":  "ms-python.python",
+    "editor.formatOnSave": true // ファイル保存時に自動フォーマット
+  },
+
+  
+  "python.formatting.provider": "black", // フォーマットにblackを使用
+  "python.formatting.blackArgs": [ // 設定値以上だと改行
+    "--line-length",
+    "100"
+  ],
+  "jupyter.askForKernelRestart": false,
+  "editor.wordWrap": "on",
+  "editor.wrappingIndent": "indent",
+  "jupyter.jupyterServerType": "local",
+  "editor.acceptSuggestionOnEnter": "off",
+  "git.autofetch": true,
+  "workbench.editor.untitled.hint": "hidden",
+  "files.autoGuessEncoding": true,
+  "japanese-novel.preview.layout.orientation": "vertical",
+  "editor.renderWhitespace": "all",
+  "editor.minimap.enabled": false,
+  "editor.unicodeHighlight.invisibleCharacters": false,
+  "editor.unicodeHighlight.ambiguousCharacters": false,
+  "workbench.startupEditor": "none",
+  "workbench.colorTheme": "GitHub Dark Default",
+  "workbench.colorCustomizations": {
+    "tab.activeBorder": "#ff0000",
+    "tab.activeBorderTop": "#ff0000",
+    "tab.activeBackground": "#152a64",
+    "tab.activeForeground": "#ffffff",
+    "tab.inactiveForeground": "#999999",
+    "list.activeSelectionBackground": "#3047b198"
+  },
+  "python.analysis.inlayHints.functionReturnTypes": true,
+  //   // デバッグ中に行内に変数値を表示
+  // "debug.inlineValues": "on",
+  //   // デバッグコンソールの表示方法
+  "debug.internalConsoleOptions": "openOnSessionStart",
+  //   // デバッグビューの表示方法
+  "debug.openDebug": "openOnSessionStart",
+  //   // テキストコピー時に書式設定を含める
+  // "editor.copyWithSyntaxHighlighting": false,
+  "update.mode": "none",
+  "editor.accessibilitySupport": "off",
+  "diffEditor.maxFileSize": 0,
+  "vertical.preview.fontsize": "18px",
+  "debug.javascript.defaultRuntimeExecutable": {
+    "pwa-node": "node"
+  },
+  "security.workspace.trust.untrustedFiles": "open",
+  "editor.defaultFormatter": "ms-python.black-formatter",
+  "workbench.layoutControl.enabled": false,
+
+  "chatgpt.emailAddress": "serinazna5727@gmail.com",
+
+  "chatgpt.chromiumPath": "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+  "chatgpt.promptPrefix.addTests": "次のコードに対するテストを実装してください",
+  "chatgpt.promptPrefix.findProblems": "次のコードの問題点を見つけてください",
+  "chatgpt.promptPrefix.optimize": "次のコードを最適化してください",
+  "chatgpt.promptPrefix.explain": "次のコードを説明してください",
+  "chatgpt.promptPrefix.addComments": "次のコードにコメントを追加してください",
+  "files.autoSave": "afterDelay",
+  "editor.formatOnSave": true,
+}
