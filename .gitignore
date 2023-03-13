@@ -1,5 +1,9 @@
 settings.json
 __pycache__
 base_pyfile.git
+<<<<<<< HEAD
 ant座標.txt
 settings.json
+=======
+kivy_templates.jpg
+>>>>>>> 1f3c0dee609dd7a0113581ae7bad2e5c536b0a3c
