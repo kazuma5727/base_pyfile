@@ -44,25 +44,8 @@ def read_text_file(
         except:
             text = ""
     else:
-<<<<<<< HEAD
         logger.warning(f"{file_path}を開くのに失敗しました")
         logger.warning("空の文字列を返します")
-=======
-        # 一般的なエンコーディングのリストでファイルを開きます
-        for file_encoding in encodings:
-            try:
-                with open(file_path, "r", encoding=file_encoding) as f:
-                    text = f.read()
-                    break
-            except:
-                text = ""
-                continue
-
-        else:
-            logger.warning(f"{file_path}を開くのに失敗しました")
-            logger.warning("空の文字列を返します")
-            return text
->>>>>>> 21b97a35696a7711273e8d83f60bbe0d2996733a
 
     if delimiter:
         if delimiter == "\n":
