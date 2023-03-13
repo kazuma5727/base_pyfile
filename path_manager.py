@@ -207,9 +207,34 @@ def get_all_subfolders(directory: str, depth: Optional[int] = None) -> List[str]
     return natsorted(get_subfolders(directory, depth))
 
 
+@logger_timer()
+def get_all_items(directory: str, choice_key: str = "", depth: Optional[int] = None) -> List[str]:
+    """
+    指定されたディレクトリ以下の全てのファイルを再帰的に検索し、
+    ファイルパスのリストを返す。
+
+    Args:
+        directory (str): 検索対象のディレクトリパス
+        choice_key (str): ファイル名に含まれる必要のあるキーワード
+        depth (Optional[int]): 検索する階層数。Noneの場合、全階層を検索する。
+
+    Returns:
+        List[str]: ファイルパスのリスト（自然順にソートされている）
+    """
+    file_set = set()
+    for folder in get_all_subfolders(directory, depth):
+        files = get_files(folder, choice_key=choice_key)
+        file_set.update(set(files))
+    file_paths = list(file_set)
+    if natsorted == sorted:
+        logger.warning("sort関数を使用しているため、予期せぬ並び順になっている場合があります")
+    return natsorted(file_paths)
+
+
 if __name__ == "__main__":
     logger = make_logger(handler=get_log_handler(10))
 
     # sample
     get_files(r"")
     get_all_subfolders(r"")
+    get_all_items(r"")
