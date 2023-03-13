@@ -75,8 +75,8 @@ def make_logger(
     Args:
         logger_name (str, optional): ロガー名。デフォルトは"log"
         level (int, optional): ログレベル。デフォルトはDEBUG
-        log_folder (str, optional): ログファイルのパス。デフォルトは""
-        handler (Handler, optional): ハンドラ。デフォルトはNone
+        log_folder (str, optional): ログファイルのパス。デフォルトは標準出力
+        handler (Handler, optional): ハンドラ。デフォルトで自動生成
 
     Returns:
         Logger: 作成されたロガー
