@@ -1,16 +1,14 @@
-import os
-import re
-import sys
 import datetime
-from logging import getLogger, NullHandler
-from typing import List, Optional, Union, Tuple
-
+import os
+import site
+from logging import NullHandler, getLogger
+from typing import List, Optional, Tuple, Union
 
 module_path = r"C:\tool\base_pyfile"
-sys.path.append(module_path)
-from log_setting import make_logger, get_log_handler
+site.addsitedir(module_path)
+from function_timer import logger_timer
+from log_setting import get_log_handler, make_logger
 from path_manager import get_files, unique_path
-
 
 logger = getLogger("log").getChild(__name__)
 logger.addHandler(NullHandler())
@@ -19,6 +17,7 @@ logger.addHandler(NullHandler())
 existing_files = {}
 
 
+@logger_timer()
 def read_text_file(
     file_path: str, delimiter: Optional[str] = None, return_encoding: bool = False
 ) -> Union[str, Tuple[List[str], str]]:
@@ -26,52 +25,25 @@ def read_text_file(
     テキストファイルを読み込み、指定された区切り文字で分割して返します。
 
     Args:
-        file_path (str): ファイルパス。
-        delimiter (Optional[str], optional): 区切り文字。デフォルトはNone。
-        return_encoding (bool, optional): エンコーディングを返すかどうかを指定するフラグ。デフォルトはFalse。
+        file_path (str): ファイルパス
+        delimiter (Optional[str], optional): 区切り文字。デフォルトはNone
+        return_encoding (bool, optional): エンコーディングを返すかどうかを指定するフラグ。デフォルトはFalse
 
     Returns:
         Union[str, Tuple[List[str], str]]: テキストファイルの内容を文字列で返す場合と、
-        指定された区切り文字で分割したテキストを含むリストとエンコーディングを含むタプルのどちらかを返します。
+        指定された区切り文字で分割したテキストを含むリストとエンコーディングを含むタプルのどちらかを返します
     """
 
     encodings = ["utf-8", "Shift_JIS", "euc_jp", "iso2022_jp"]
-    file_encoding = None
-
-    # ファイルのエンコーディングを検出
-    try:
-        import chardet
-
-        with open(file_path, "rb") as f:
-            result = chardet.detect(f.read())
-            file_encoding = result["encoding"]
-            # エンコーディングがWindows-1252の場合、代わりにShift_JISに設定する。
-            if file_encoding == "Windows-1252":
-                file_encoding = "Shift_JIS"
-
-    except ImportError:
-        pass
-    except UnicodeDecodeError:
-        logger.warning("ファイルを指定されたエンコーディングで開けませんでした。")
-    except FileNotFoundError:
-        logger.warning(f"{file_path}を開くのに失敗しました")
-        logger.warning("空の文字列を返します")
-        return ""
-
-    if file_encoding:
-        with open(file_path, "r", encoding=file_encoding) as f:
-            text = f.read()
+    # 一般的なエンコーディングのリストでファイルを開きます
+    for file_encoding in encodings:
+        try:
+            with open(file_path, "r", encoding=file_encoding) as f:
+                text = f.read()
+                break
+        except:
+            text = ""
     else:
-        # 一般的なエンコーディングのリストでファイルを開きます
-        for file_encoding in encodings:
-            try:
-                with open(file_path, "r", encoding=file_encoding) as f:
-                    text = f.read()
-                    break
-            except:
-                text = ""
-
-    if not text:
         logger.warning(f"{file_path}を開くのに失敗しました")
         logger.warning("空の文字列を返します")
 
@@ -89,6 +61,7 @@ def read_text_file(
         return text
 
 
+@logger_timer()
 def write_file(
     file_path: str,
     write_text: str = "",
@@ -102,15 +75,15 @@ def write_file(
     Parameters
     ----------
     file_path : str
-        書き込み先ファイルのパス。
+        書き込み先ファイルのパス
     write_text : str, optional
-        書き込むテキスト。デフォルトは空文字列。
+        書き込むテキスト。デフォルトは空文字列
     file_encoding : str, optional
-        ファイルのエンコーディング。デフォルトは"utf-8"。
+        ファイルのエンコーディング。デフォルトは"utf-8"
     write_mode : str, optional
-        書き込みモード。デフォルトは"w"。
+        書き込みモード。デフォルトは"w"
     back_up_mode : bool, optional
-        Trueの場合、書き込み先にファイルが存在している場合は、バックアップを作成して上書き保存する。デフォルトはTrue。
+        Trueの場合、書き込み先にファイルが存在している場合は、バックアップを作成して上書き保存する。デフォルトはTrue
 
     Returns
     -------
@@ -118,8 +91,8 @@ def write_file(
     """
     write_text = str(write_text)
     # 拡張子がtxtでなければ.txtに変更する
-    if not (file_path.endswith(".txt") or file_path.endswith(".bat")):
-        logger.info("拡張子がtxtでもbatでありません\n.txtに変更します")
+    if not (file_path.endswith(".txt") or file_path.endswith(".bat") or file_path.endswith(".py")):
+        logger.info("拡張子がtxtでもbatでもpyでもありません\n.txtに変更します")
         file_path = os.path.splitext(file_path)[0] + ".txt"
 
     # バックアップを作成し、上書き保存をする
@@ -168,6 +141,4 @@ def backup_file(file_path: str) -> None:
 if __name__ == "__main__":
     logger = make_logger(handler=get_log_handler(10))
 
-    # sample
-    print(get_files(r"C:\git"))
-    print(unique_path(r"C:\Users\yamamotok\Desktop\classes.txt"))
+    print(get_files(r""))

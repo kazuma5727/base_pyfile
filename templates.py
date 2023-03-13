@@ -1,18 +1,20 @@
 import os
+import site
 import sys
-from logging import getLogger, NullHandler
+from logging import NullHandler, getLogger
 
 module_path = r"C:\tool\base_pyfile"
-sys.path.append(module_path)
-from log_setting import make_logger, get_log_handler
-from path_manager import get_files, unique_path
+site.addsitedir(module_path)
 from file_manager import read_text_file, write_file
-
+from function_timer import logger_timer, timer
+from log_setting import get_log_handler, make_logger
+from path_manager import get_files, unique_path
 
 logger = getLogger("log").getChild(__name__)
 logger.addHandler(NullHandler())
 
 
+@logger_timer()
 def temp():
     """_summary_"""
     logger.debug("debug")

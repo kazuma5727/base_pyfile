@@ -1,18 +1,20 @@
 import os
+import site
+import sys
 from logging import (
-    getLogger,
-    StreamHandler,
-    Formatter,
-    FileHandler,
-    NullHandler,
-    Handler,
-    Logger,
-    basicConfig,
+    CRITICAL,
     DEBUG,
+    ERROR,
     INFO,
     WARNING,
-    ERROR,
-    CRITICAL,
+    FileHandler,
+    Formatter,
+    Handler,
+    Logger,
+    NullHandler,
+    StreamHandler,
+    basicConfig,
+    getLogger,
 )
 
 # トップレベルのロガーを作成し、その子として、このモジュールのロガーを作成
@@ -24,28 +26,34 @@ logger.addHandler(NullHandler())
 
 
 def get_log_handler(
-    log_level: int = WARNING, log_file_path: str = __file__, log_folder: str = ".log"
+    log_level: int = WARNING, file_path: str = sys.argv[0], log_folder: str = ""
 ) -> Handler:
-    """ログハンドラを作成する
+    """ログハンドラを作成
 
     Args:
         log_level (int, optional): ログレベル。デフォルトは WARNING
-        log_file_path (str, optional): ログファイルのパス。デフォルトはこのモジュールのパス
-        log_folder (str, optional): ログフォルダのパス。デフォルトは".log"
+        file_path (str, optional): ログファイルを保存するファイルのパス。デフォルトは使用したプログラム
+        log_folder (str, optional): ログフォルダ作成時のパス。推奨は".log"
 
     Returns:
         Handler: 作成されたハンドラ
     """
 
-    log_level_names = {50: "CRITICAL", 40: "ERROR", 30: "WARNING", 20: "INFO", 10: "DEBUG"}
+    LOG_LEVEL_NAMES = {50: "CRITICAL", 40: "ERROR", 30: "WARNING", 20: "INFO", 10: "DEBUG"}
 
     # ログフォルダが指定された場合、ログフォルダを作成し、ログファイルを作成
-    if log_folder and log_file_path != __file__:
-        os.makedirs(log_folder, exist_ok=True)
-        log_file_name = f"{log_level_names[log_level]}_{os.path.splitext(os.path.basename(log_file_path))[0]}.log"
-        log_file_path = os.path.join(log_folder, log_file_name)
+    if log_folder:
+        if os.path.isfile(file_path):
+            file_folder_path = os.path.dirname(file_path)
+        log_folder_path = os.path.join(file_folder_path, log_folder)
+        os.makedirs(log_folder_path, exist_ok=True)
+        log_file_name = (
+            f"{LOG_LEVEL_NAMES[log_level]}_{os.path.splitext(os.path.basename(file_path))[0]}.log"
+        )
+        log_file_path = os.path.join(log_folder_path, log_file_name)
         logger.info(f"ログファイルを作成: {log_file_path}")
         handler = FileHandler(filename=log_file_path)
+
     # ログフォルダが指定されない場合、標準出力に出力
     else:
         handler = StreamHandler()
@@ -59,7 +67,7 @@ def get_log_handler(
 def make_logger(
     logger_name: str = "log",
     level: int = DEBUG,
-    log_file_path: str = __file__,
+    log_folder: str = "",
     handler: Handler = None,
 ) -> Logger:
     """ロガーを取得する
@@ -67,23 +75,26 @@ def make_logger(
     Args:
         logger_name (str, optional): ロガー名。デフォルトは"log"
         level (int, optional): ログレベル。デフォルトはDEBUG
-        log_file_path (str, optional): ログファイルのパス。デフォルトはこのモジュールのパス
+        log_folder (str, optional): ログファイルのパス。デフォルトは""
         handler (Handler, optional): ハンドラ。デフォルトはNone
 
     Returns:
         Logger: 作成されたロガー
     """
 
-    # ロガーオブジェクトを作成し、名前とレベルを設定
+    # ロガーオブジェクトを作成し、名前を設定
     logger = getLogger(logger_name)
-    logger.setLevel(level)
 
-    # handlerが与えられた場合はそれを使用し、与えられなかった場合はcreate_handler()関数で作成したハンドラを使用
+    # handlerが与えられた場合はそれを使用し、与えられなかった場合はget_log_handler()関数で作成したハンドラを使用
     if handler:
         logger.addHandler(handler)
+        level = handler.level
 
     else:
-        logger.addHandler(get_log_handler(level, log_file_path))
+        logger.addHandler(get_log_handler(level, log_folder))
+
+    # レベルを設定
+    logger.setLevel(level)
 
     # 親ロガーにログを伝播させないように設定
     logger.propagate = False
@@ -92,7 +103,6 @@ def make_logger(
 
 
 if __name__ == "__main__":
-
     logger = make_logger()
 
     logger.debug("デバッグ")

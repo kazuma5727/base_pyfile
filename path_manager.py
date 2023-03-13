@@ -1,9 +1,9 @@
 import os
 import re
-import sys
-from logging import getLogger, NullHandler
-from typing import List, Optional
+import site
 from functools import cache
+from logging import NullHandler, getLogger
+from typing import List, Optional
 
 try:
     from natsort import natsorted
@@ -11,8 +11,9 @@ except ImportError:
     natsorted = sorted
 
 module_path = r"C:\tool\base_pyfile"
-sys.path.append(module_path)
-from log_setting import make_logger, get_log_handler
+site.addsitedir(module_path)
+from function_timer import logger_timer
+from log_setting import get_log_handler, make_logger
 
 logger = getLogger("log").getChild(__name__)
 logger.addHandler(NullHandler())
@@ -21,6 +22,7 @@ logger.addHandler(NullHandler())
 existing_files = {}
 
 
+@logger_timer()
 def unique_path(
     file_path: str,
     counter: int = 1,
@@ -62,43 +64,49 @@ def unique_path(
         or os.path.exists(check_path.format(""))
         or os.path.exists(check_path.format(existing_files[file_path]))
     ):
-        logger.debug("path先にファイルはありませんでした")
-        make_directory(os.path.dirname(return_path))
+        logger.debug(f"path先に{return_path}ファイルはありませんでした")
+        if ext:
+            make_directory(os.path.dirname(return_path))
+        else:
+            make_directory(return_path)
         return return_path
 
     while os.path.exists(new_path.format(existing_files[file_path])):
+        if existing_text:
+            # 同一テキストファイル確認
+            try:
+                if new_path.format(existing_files[file_path]) and existing_text:
+                    from file_manager import read_text_file
 
-        # 同一テキストファイル確認
-        try:
-            if new_path.format(existing_files[file_path]) and existing_text:
-                from file_manager import read_text_file
+                    before_text = read_text_file(new_path.format(existing_files[file_path]))
+                    if before_text == existing_text:
+                        logger.info("同じテキストがあります")
+                        return new_path.format(existing_files[file_path])
+            except ImportError:
+                logger.error("module_pathが通って居ない可能性があります")
 
-                before_text = read_text_file(new_path.format(existing_files[file_path]))
-                if before_text == existing_text:
-                    logger.info("同じテキストがあります")
-                    return new_path.format(existing_files[file_path])
-        except ImportError:
-            logger.error("module_pathが通って居ない可能性があります")
+        if existing_image:
+            # 同一画像ファイル確認
+            try:
+                import cv2
+                import numpy as np
 
-        # 同一画像ファイル確認
-        try:
-            import cv2
-            import numpy as np
-
-            if new_path.format(existing_files[file_path]) and isinstance(
-                existing_image, np.ndarray
-            ):
-                if np.array_equal(
-                    cv2.imread(new_path.format(existing_files[file_path])), existing_image
+                if new_path.format(existing_files[file_path]) and isinstance(
+                    existing_image, np.ndarray
                 ):
-                    logger.info("同じ画像があります")
-                    return new_path.format(existing_files[file_path])
-        except ImportError:
-            logger.warning("画像検索できません")
+                    if np.array_equal(
+                        cv2.imread(new_path.format(existing_files[file_path])), existing_image
+                    ):
+                        logger.info("同じ画像があります")
+                        return new_path.format(existing_files[file_path])
+            except ImportError:
+                logger.warning("画像検索できません")
 
         existing_files[file_path] += 1
-
-    make_directory(os.path.dirname(new_path.format(existing_files[file_path])))
+    if ext:
+        make_directory(os.path.dirname(new_path.format(existing_files[file_path])))
+    else:
+        make_directory(new_path.format(existing_files[file_path]))
     return new_path.format(existing_files[file_path])
 
 
@@ -112,9 +120,7 @@ def make_directory(path: str) -> str:
     Returns:
         str: 渡されたパスをそのまま返します。
     """
-    directory = os.path.dirname(os.path.abspath(path))
-
-    if "." in path:
+    if "." in os.path.basename(path):
         directory = os.path.dirname(os.path.abspath(path))
     else:
         directory = os.path.abspath(path)
@@ -125,6 +131,7 @@ def make_directory(path: str) -> str:
     return path
 
 
+@logger_timer()
 def get_files(path: str, choice_key: str = "") -> List[str]:
     """フォルダー内にあるすべてのファイルを絶対パスでリストとして返す。
 
@@ -159,12 +166,50 @@ def get_files(path: str, choice_key: str = "") -> List[str]:
         return [abs_path]
 
 
+@logger_timer()
+def get_all_subfolders(directory: str, depth: Optional[int] = None) -> List[str]:
+    """
+    指定されたディレクトリ以下の全てのフォルダを再帰的に検索し、
+    フォルダパスのリストを返す。
+
+    Args:
+        directory (str): 検索対象のディレクトリパス
+        depth (Optional[int]): 検索する階層数。Noneの場合、全階層を検索する。
+
+    Returns:
+        List[str]: ディレクトリパスのリスト（自然順にソートされている）
+    """
+
+    def get_subfolders(directory: str, depth: Optional[int]) -> List[str]:
+        """
+        指定されたディレクトリ以下のフォルダを再帰的に検索し、
+        フォルダパスのリストを返す。
+
+        Args:
+            directory (str): 検索対象のディレクトリパス
+            depth (Optional[int]): 検索する階層数。Noneの場合、全階層を検索する。
+
+        Returns:
+            List[str]: ディレクトリパスのリスト
+        """
+        subfolders = []
+        with os.scandir(directory) as entries:
+            for entry in entries:
+                if entry.is_dir():
+                    if depth is None or depth > 1:
+                        subfolders.extend(get_subfolders(entry.path, depth - 1 if depth else None))
+                    subfolders.append(entry.path)
+                elif entry.is_file():
+                    subfolders.append(entry.path)
+        return subfolders
+
+    directory = os.path.abspath(directory)
+    return natsorted(get_subfolders(directory, depth))
+
+
 if __name__ == "__main__":
     logger = make_logger(handler=get_log_handler(10))
 
     # sample
-    print(get_files(r"C:\git"))
-    x = unique_path(r"C:\Users\yamamotok\Desktop\classes.txt")
-    from file_manager import write_file
-
-    write_file(unique_path(r"a{}\a.txt", existing_text="a"),x)
+    get_files(r"")
+    get_all_subfolders(r"")

@@ -1,27 +1,29 @@
 import os
+import site
 import sys
-import cv2
+
+# import cv2
 from kivy.app import App
-from kivy.config import Config
-from kivy.lang import Builder
-from kivy.uix.widget import Widget
-from kivy.graphics.texture import Texture
-from kivy.properties import StringProperty, BooleanProperty
 from kivy.clock import Clock
-from kivy.core.text import LabelBase, DEFAULT_FONT
+from kivy.config import Config
+from kivy.core.text import DEFAULT_FONT, LabelBase
+from kivy.graphics.texture import Texture
+from kivy.lang import Builder
+from kivy.properties import BooleanProperty, StringProperty
 from kivy.resources import resource_add_path
+from kivy.uix.widget import Widget
 
 resource_add_path(r"C:\Windows\Fonts")
 LabelBase.register(DEFAULT_FONT, "BIZ-UDMinchoM.ttc")
 import configparser
 from concurrent.futures import ThreadPoolExecutor
-from logging import getLogger, NullHandler
+from logging import NullHandler, getLogger
 
 module_path = r"C:\tool\base_pyfile"
-sys.path.append(module_path)
-from log_setting import make_logger, get_log_handler
-from path_manager import get_files, unique_path
+site.addsitedir(module_path)
 from file_manager import read_text_file, write_file
+from log_setting import get_log_handler, make_logger
+from path_manager import get_files, unique_path
 
 logger = getLogger("log").getChild(__name__)
 logger.addHandler(NullHandler())
@@ -60,7 +62,7 @@ class ImageWidget(Widget):
         super(ImageWidget, self).__init__(**kwargs)
 
         # Auto_mode_checkのアクティブ状態をバインド
-        self.ids.Auto_mode_check.bind(active=self.check_swich_temp)
+        # self.ids.Auto_mode_check.bind(active=self.check_swich_temp)
         # 1つのワーカーしか許可しないスレッドプールを生成
         self.executor = ThreadPoolExecutor(max_workers=1)
         # ログにAuto_modeの状態を出力
@@ -88,9 +90,9 @@ class ImageWidget(Widget):
         # 画像のパスを指定
         self.image = r"C:\tool\pyfile_folder\kivy_templates.jpg"
         # 画像を読み込み
-        self.frame = cv2.imread(self.image)
-        # 画像を表示するメソッド
-        self.play()
+        # self.frame = cv2.imread(self.image)
+        # # 画像を表示するメソッド
+        # self.play()
 
     def Auto(self):
         """
@@ -125,7 +127,6 @@ class ImageWidget(Widget):
         logger.debug(f"画面サイズ{w},{h}")
 
         for setting in ["KIVY_config", "KIVY_MODE"]:
-
             if "config" in setting:
                 self.config[setting] = {self.width: w, self.height: h}
 
@@ -139,7 +140,6 @@ class ImageWidget(Widget):
         sys.exit()
 
     def play(self):
-
         # self.cap = cv2.VideoCapture(0)
 
         Clock.schedule_interval(self.update, 1 / 30)
@@ -168,7 +168,6 @@ class KivyAPP(App):
 
 
 def kivy_app(kv_filepath=r"kivy_temp.kv"):
-
     # Builder.load_string("""
     # <App名>:
     # 内容
@@ -179,7 +178,9 @@ def kivy_app(kv_filepath=r"kivy_temp.kv"):
 
 
 if __name__ == "__main__":
-    # logger = logger_create(debug := hdlr_create(10))
-    kv_file = os.path.join(os.path.dirname(__file__),"kivy_temp.kv")
+    logger = make_logger(handler=get_log_handler(10))
+
+    kv_file = os.path.join(os.path.dirname(__file__), "kivy_temp.kv")
+    kv_file = r"F:\pyfile_folder\tool\novel_tool\novel_GUI.kv"
 
     kivy_app(kv_filepath=kv_file)

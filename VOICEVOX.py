@@ -1,31 +1,35 @@
 import json
-import time
-import requests
-import wave
 import os
-import sys
-import subprocess
 import re
+import site
+import subprocess
+import time
+import wave
 from functools import cache
+from logging import NullHandler, getLogger
 from typing import Dict, List, Optional
+
+import requests
 
 try:
     from tqdm import tqdm
+
+    progress = lambda iterable: tqdm(iterable)
 except ImportError:
     tqdm = lambda iterable, *args, **kwargs: iterable
+    progress = tqdm
 
-
-from logging import getLogger, NullHandler
 
 module_path = r"C:\tool\base_pyfile"
-sys.path.append(module_path)
-from log_setting import make_logger, get_log_handler
-from path_manager import get_files, unique_path
+site.addsitedir(module_path)
 from file_manager import read_text_file, write_file
-
+from function_timer import logger_timer, timer
+from log_setting import get_log_handler, make_logger
+from path_manager import get_files, unique_path
 
 logger = getLogger("log").getChild(__name__)
 logger.addHandler(NullHandler())
+
 
 # speakerデータを取得する関数
 def _get_speaker_data() -> List[Dict]:
@@ -44,14 +48,13 @@ def _get_speaker_data() -> List[Dict]:
 
             except:
                 # エラーが発生した場合はリトライする
-                if i == 9:
-                    logger.error("出力できなかったため、終了します")
-                    raise ValueError
-                else:
-                    interval = 1 + i / 10
-                    logger.info(f"出力失敗{interval}秒待ちます")
-                    time.sleep(interval)
-                    continue
+                interval = 1 + i / 10
+                logger.info(f"出力失敗{interval}秒待ちます")
+                time.sleep(interval)
+                continue
+        else:
+            logger.error("出力できなかったため、終了します")
+            raise ValueError
     else:
         # キャッシュに保存されたデータを返す
         return _get_speaker_data.cache
@@ -129,6 +132,7 @@ def call_speaker_name_by_id(speaker_id: int = 3) -> int:
             logger.debug(f"{speaker_id} はノーマルスピーカーのIDではありません。次のIDに移動します。")
 
 
+@logger_timer()
 def generate_wav(text: str, speaker: int = 3, output_path: str = "audio.wav") -> bool:
     """
     テキストから音声を生成してwavファイルを出力する
@@ -163,19 +167,19 @@ def generate_wav(text: str, speaker: int = 3, output_path: str = "audio.wav") ->
                     wf.setframerate(24000)
                     wf.writeframes(response2.content)
             return True
+
         except:
-            if i == 9:
-                logger.error("出力できなかったため、終了します")
-                return False
-            else:
-                interval = 1 + i / 10
-                logger.info(f"出力失敗{interval}秒待ちます")
-                time.sleep(interval)
-                continue
+            interval = 1 + i / 10
+            logger.info(f"出力失敗{interval}秒待ちます")
+            time.sleep(interval)
+            continue
+    else:
+        logger.error("出力できなかったため、終了します")
+        return False
 
 
 def VOICEVOX_output(
-    path_or_text: str, speaker: int = 8, output_dir: str = "", delimiter="\n"
+    path_or_text: str, speaker: int = 8, output_dir: str = "", delimiter="\n", progressbar=progress
 ) -> bool:
     """
     テキストファイルを読み込み、1行ずつVOICEVOXで音声を生成します。
@@ -191,18 +195,20 @@ def VOICEVOX_output(
     """
 
     if os.path.exists(path_or_text):
-        path = path_or_text
         text = read_text_file(path_or_text)
 
     else:
         text = path_or_text
 
     if not output_dir and os.path.exists(path_or_text):
-        output_dir = os.path.join(
-            os.path.dirname(path), f"{os.path.splitext(os.path.basename(path_or_text))[0] }_{{}}"
-        )
+        output_dir = f"{os.path.splitext(path_or_text)[0] }_{{}}"
+
     elif not output_dir:
-        output_dir = os.path.join(output_dir, f"音声{{}}")
+        output_dir = f"音声{{}}"
+
+    elif os.path.isfile(output_dir):
+        output_dir = os.path.splitext(output_dir)[0] + "_{}"
+
     voice_number = 0
 
     if isinstance(text, str):
@@ -217,13 +223,14 @@ def VOICEVOX_output(
     zero_count = r"{:0" + str(len(str(len(text)))) + r"}_{}.wav"
     subprocess.Popen([r"D:\0soft\VOICEVOX\VOICEVOX.exe"], shell=True)
     _e = 0
-    for e, t in tqdm(enumerate(text)):
-
-        if len(t) < 2:
+    for e, t in progressbar(enumerate(text)):
+        t = t.split()
+        if not t:
             _e -= 1
             continue
 
-        if "「" in t:
+        # もし、文字列tに「、「（」または「(」のいずれかが含まれている場合、voice変更
+        if any(c in "「（(" for c in t):
             voice_number += 1
 
         else:
