@@ -65,6 +65,7 @@ def read_text_file(
 def write_file(
     file_path: str,
     write_text: str = "",
+    extension="txt",
     file_encoding: str = "utf-8",
     write_mode: str = "w",
     back_up_mode: bool = True,
@@ -90,10 +91,12 @@ def write_file(
     None
     """
     write_text = str(write_text)
-    # 拡張子がtxtでなければ.txtに変更する
-    if not (file_path.endswith(".txt") or file_path.endswith(".bat") or file_path.endswith(".py")):
-        logger.info("拡張子がtxtでもbatでもpyでもありません\n.txtに変更します")
-        file_path = os.path.splitext(file_path)[0] + ".txt"
+    if not "." in extension:
+        extension = "." + extension
+    # 拡張子が引数と一致していなければ変更する
+    if not (file_path.endswith(f"{extension}")):
+        logger.info(f"拡張子が{extension}ではありません\n{extension}に変更します")
+        file_path = os.path.splitext(file_path)[0] + f"{extension}"
 
     # バックアップを作成し、上書き保存をする
     if back_up_mode and os.path.exists(file_path):
@@ -142,3 +145,4 @@ if __name__ == "__main__":
     logger = make_logger(handler=get_log_handler(10))
 
     print(get_files(r""))
+    print(read_text_file(r"file_manager.py"))
