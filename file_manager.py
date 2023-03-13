@@ -70,10 +70,12 @@ def read_text_file(
                     break
             except:
                 text = ""
+                continue
 
-    if not text:
-        logger.warning(f"{file_path}を開くのに失敗しました")
-        logger.warning("空の文字列を返します")
+        else:
+            logger.warning(f"{file_path}を開くのに失敗しました")
+            logger.warning("空の文字列を返します")
+            return text
 
     if delimiter:
         if delimiter == "\n":
