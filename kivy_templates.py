@@ -7,9 +7,8 @@ from kivy.app import App
 from kivy.clock import Clock
 from kivy.config import Config
 from kivy.core.text import DEFAULT_FONT, LabelBase
-from kivy.graphics.texture import Texture
 from kivy.lang import Builder
-from kivy.properties import BooleanProperty, StringProperty
+from kivy.properties import BooleanProperty, NumericProperty, StringProperty
 from kivy.resources import resource_add_path
 from kivy.uix.widget import Widget
 
@@ -57,6 +56,8 @@ class ImageWidget(Widget):
 
     movie = StringProperty("")
     image = StringProperty("")
+    progress_value = NumericProperty(100)
+    progress_max = NumericProperty(100)
 
     def __init__(self, **kwargs):
         super(ImageWidget, self).__init__(**kwargs)
@@ -67,6 +68,8 @@ class ImageWidget(Widget):
         self.executor = ThreadPoolExecutor(max_workers=1)
         # ログにAuto_modeの状態を出力
         logger.debug(f"Auto_mode {self.on_off}")
+        App.get_running_app().title = "old_title"
+        Clock.schedule_once(self.update_title, 0)
 
         # Auto_modeがonの場合startメソッドを実行
         if self.on_off:
@@ -137,7 +140,10 @@ class ImageWidget(Widget):
             # 指定したconfigファイルを書き込み
             self.config.write(configfile)
 
-        sys.exit()
+        App.get_running_app().stop()
+
+    def update_title(self, dt, title="New_title"):
+        App.get_running_app().title = "New_title"
 
     def play(self):
         # self.cap = cv2.VideoCapture(0)
@@ -181,6 +187,5 @@ if __name__ == "__main__":
     logger = make_logger(handler=get_log_handler(10))
 
     kv_file = os.path.join(os.path.dirname(__file__), "kivy_temp.kv")
-    kv_file = r"F:\pyfile_folder\tool\novel_tool\novel_GUI.kv"
 
     kivy_app(kv_filepath=kv_file)
