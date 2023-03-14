@@ -3,12 +3,17 @@ import site
 import sys
 from logging import NullHandler, getLogger
 
-module_path = r"C:\tool\base_pyfile"
-site.addsitedir(module_path)
-from file_manager import read_text_file, write_file
-from function_timer import logger_timer, timer
-from log_setting import get_log_handler, make_logger
-from path_manager import get_files, unique_path
+from base_pyfile import (
+    get_all_items,
+    get_all_subfolders,
+    get_files,
+    get_log_handler,
+    make_directory,
+    make_logger,
+    read_text_file,
+    unique_path,
+    write_file,
+)
 
 logger = getLogger("log").getChild(__name__)
 logger.addHandler(NullHandler())
