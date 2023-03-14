@@ -6,9 +6,9 @@ from typing import List, Optional, Tuple, Union
 
 module_path = r"C:\tool\base_pyfile"
 site.addsitedir(module_path)
-from function_timer import logger_timer
-from log_setting import get_log_handler, make_logger
-from path_manager import get_files, unique_path
+from base_pyfile.function_timer import logger_timer
+from base_pyfile.log_setting import get_log_handler, make_logger
+from base_pyfile.path_manager import get_files, unique_path
 
 logger = getLogger("log").getChild(__name__)
 logger.addHandler(NullHandler())
