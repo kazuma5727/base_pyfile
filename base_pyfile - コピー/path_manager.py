@@ -1,5 +1,6 @@
 import os
 import re
+import site
 from functools import cache
 from logging import NullHandler, getLogger
 from typing import List, Optional
@@ -9,6 +10,9 @@ try:
 except ImportError:
     natsorted = sorted
 
+module_path = r"C:\tool\base_pyfile"
+site.addsitedir(module_path)
+from base_pyfile.function_timer import logger_timer
 from base_pyfile.log_setting import get_log_handler, make_logger
 
 logger = getLogger("log").getChild(__name__)
@@ -18,6 +22,7 @@ logger.addHandler(NullHandler())
 existing_files = {}
 
 
+@logger_timer()
 def unique_path(
     file_path: str,
     counter: int = 1,
@@ -126,6 +131,7 @@ def make_directory(path: str) -> str:
     return path
 
 
+@logger_timer()
 def get_files(path: str, choice_key: str = "") -> List[str]:
     """フォルダー内にあるすべてのファイルを絶対パスでリストとして返す。
 
@@ -160,6 +166,7 @@ def get_files(path: str, choice_key: str = "") -> List[str]:
         return [abs_path]
 
 
+@logger_timer()
 def get_all_subfolders(directory: str, depth: Optional[int] = None) -> List[str]:
     """
     指定されたディレクトリ以下の全てのフォルダを再帰的に検索し、

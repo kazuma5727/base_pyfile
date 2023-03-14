@@ -1,8 +1,11 @@
+import site
 import time
 from functools import wraps
 from logging import NullHandler, getLogger
 from typing import Callable
 
+module_path = r"C:\tool\base_pyfile"
+site.addsitedir(module_path)
 from base_pyfile.log_setting import get_log_handler, make_logger
 
 logger = getLogger("log").getChild(__name__)

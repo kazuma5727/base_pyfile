@@ -1,8 +1,12 @@
 import datetime
 import os
+import site
 from logging import NullHandler, getLogger
 from typing import List, Optional, Tuple, Union
 
+module_path = r"C:\tool\base_pyfile"
+site.addsitedir(module_path)
+from base_pyfile.function_timer import logger_timer
 from base_pyfile.log_setting import get_log_handler, make_logger
 from base_pyfile.path_manager import get_files, unique_path
 
@@ -13,6 +17,7 @@ logger.addHandler(NullHandler())
 existing_files = {}
 
 
+@logger_timer()
 def read_text_file(
     file_path: str, delimiter: Optional[str] = None, return_encoding: bool = False
 ) -> Union[str, Tuple[List[str], str]]:
@@ -56,6 +61,7 @@ def read_text_file(
         return text
 
 
+@logger_timer()
 def write_file(
     file_path: str,
     write_text: str = "",
