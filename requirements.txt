@@ -1,7 +1,3 @@
-pip-review
 natsort
 tqdm
-black
-isort
-kivy
 requests
