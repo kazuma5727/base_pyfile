@@ -1,12 +1,3 @@
-<<<<<<< HEAD
 natsort
 tqdm
-=======
-pip-review
-natsort
-tqdm
-black
-isort
-kivy
->>>>>>> cfcdf73702d02505806e938b2f83fbae3cc4477a
 requests
