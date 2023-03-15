@@ -189,18 +189,18 @@ def get_all_subfolders(directory: str, depth: Optional[int] = None) -> List[str]
         with os.scandir(directory) as entries:
             for entry in entries:
                 if entry.is_dir():
-                    if depth is None or depth > 1:
+                    if depth is None or depth >= 1:
                         subfolders.extend(get_subfolders(entry.path, depth - 1 if depth else None))
                     subfolders.append(entry.path)
-                elif entry.is_file():
-                    subfolders.append(entry.path)
+                # elif entry.is_file():
+                #     subfolders.append(entry.path)
         return subfolders
 
     directory = os.path.abspath(directory)
     return natsorted(get_subfolders(directory, depth))
 
 
-def get_all_items(directory: str, choice_key: str = "", depth: Optional[int] = None) -> List[str]:
+def get_all_files(directory: str, choice_key: str = "", depth: Optional[int] = None) -> List[str]:
     """
     指定されたディレクトリ以下の全てのファイルを再帰的に検索し、
     ファイルパスのリストを返す。
@@ -214,7 +214,9 @@ def get_all_items(directory: str, choice_key: str = "", depth: Optional[int] = N
     file_set = set()
     for folder in get_all_subfolders(directory, depth):
         files = get_files(folder, choice_key=choice_key)
-        file_set.update(set(files))
+        # ファイルだけを抽出する
+        files_only = [file for file in files if os.path.isfile(file)]
+        file_set.update(set(files_only))
 
     file_paths = list(file_set)
     
@@ -229,3 +231,4 @@ if __name__ == "__main__":
     # sample
     get_files(r"")
     get_all_subfolders(r"")
+    get_all_files(r"")
