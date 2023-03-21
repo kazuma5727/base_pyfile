@@ -5,3 +5,4 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "base_pyfile"
 readme = "README.md"
+version = {version = "*", file = "__init__.py"}
