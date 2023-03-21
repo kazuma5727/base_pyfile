@@ -3,6 +3,8 @@ requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.poetry]
-name = "base_pyfile"
-readme = "README.md"
+name = "base-pyfile"
 version = {version = "*", file = "__init__.py"}
+description = ""
+authors = ["Paalon <paalon@email.adress>"]
+readme = "README.md"
