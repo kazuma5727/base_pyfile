@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import List, Optional, Tuple, Union
 
 from base_pyfile.log_setting import get_log_handler, make_logger
-from base_pyfile.path_manager import get_files, unique_path
+from base_pyfile.path_manager import get_files, make_directory, unique_path
 
 logger = getLogger("log").getChild(__name__)
 logger.addHandler(NullHandler())
@@ -80,6 +80,7 @@ def write_file(
         書き込みモード。デフォルトは"w"
     back_up_mode : bool, optional
         Trueの場合、書き込み先にファイルが存在している場合は、バックアップを作成して上書き保存する。デフォルトはTrue
+        not_dateを入力すると、バックアップファイルに日付が記載されなくなる。
 
     Returns
     -------
@@ -102,36 +103,50 @@ def write_file(
 
     # バックアップを作成し、上書き保存をする
     if back_up_mode and file_path.exists():
-        logger.info("既に書き込み先にはファイルが存在しています。バックアップを作成して上書き保存をします")
-        backup_file(file_path)
+        file = read_text_file(file_path)
+        if file == write_text:
+            logger.info("既に書き込み先には同一ファイルが存在しています。")
+        else:
+            logger.info("既に書き込み先にはファイルが存在しています。バックアップを作成して上書き保存をします")
+            backup_file(file_path, back_up_mode)
 
     # ファイルを開いて書き込む
-    with open(file_path, write_mode, encoding=file_encoding) as f:
+    with open(make_directory(file_path), write_mode, encoding=file_encoding) as f:
         f.write(write_text)
 
     logger.debug(f"{file_path}にテキストファイルを保存しました")
 
 
-def backup_file(file_path: str) -> None:
+def backup_file(file_path: str, date_string=True) -> None:
     """
     ファイルのバックアップを作成します。
 
     Args:
         file_path (str): バックアップを作成するファイルのパス。
+        date_string (bool): バックアップファイルに日付を入れるかどうかの判定。
 
     Returns:
         None
     """
     # 既存のファイルから読み込む
+    file_path = Path(file_path)
     file_content = read_text_file(file_path)
+
     # 現在日時を取得
     jst_timezone = datetime.timezone(datetime.timedelta(hours=9), "JST")
     current_datetime = datetime.datetime.now(jst_timezone)
-    date_string = current_datetime.strftime("%y年%m月%d日")
 
-    # バックアップフォルダを作成し、そこに日付を入れたファイル名で保存
-    backup_file_path = file_path.parent /  "backup" / f"{file_path}_{date_string}_backup{{}}.txt",
-    )
+    if date_string == "not_date":
+        # バックアップフォルダを作成て保存
+        backup_file_path = file_path.parent / "backup" / f"{file_path.stem}_backup{{}}.txt"
+
+    else:
+        date_string = current_datetime.strftime("%y年%m月%d日")
+        # バックアップフォルダを作成し、そこに日付を入れたファイル名で保存
+        backup_file_path = (
+            file_path.parent / "backup" / f"{file_path.stem}_{date_string}_backup{{}}.txt"
+        )
+
     # バックアップファイルを保存
     write_file(
         unique_path(backup_file_path, existing_text=file_content),
