@@ -23,6 +23,7 @@ except ImportError:
 from base_pyfile import (
     get_files,
     get_log_handler,
+    logger_timer,
     make_logger,
     read_text_file,
     unique_path,
