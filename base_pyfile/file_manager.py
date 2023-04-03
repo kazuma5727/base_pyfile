@@ -79,6 +79,7 @@ def write_file(
         書き込みモード。デフォルトは"w"
     back_up_mode : bool, optional
         Trueの場合、書き込み先にファイルが存在している場合は、バックアップを作成して上書き保存する。デフォルトはTrue
+        not_dateを入力すると、バックアップファイルに日付が記載されなくなる。
 
     Returns
     -------
@@ -95,7 +96,7 @@ def write_file(
     # バックアップを作成し、上書き保存をする
     if back_up_mode and os.path.exists(file_path):
         logger.info("既に書き込み先にはファイルが存在しています。バックアップを作成して上書き保存をします")
-        backup_file(file_path)
+        backup_file(file_path,back_up_mode)
 
     # ファイルを開いて書き込む
     with open(file_path, write_mode, encoding=file_encoding) as f:
@@ -104,12 +105,13 @@ def write_file(
     logger.debug(f"{file_path}にテキストファイルを保存しました")
 
 
-def backup_file(file_path: str) -> None:
+def backup_file(file_path: str,date_string=True) -> None:
     """
     ファイルのバックアップを作成します。
 
     Args:
         file_path (str): バックアップを作成するファイルのパス。
+        date_string (bool): バックアップファイルに日付を入れるかどうかの判定。
 
     Returns:
         None
@@ -119,14 +121,22 @@ def backup_file(file_path: str) -> None:
     # 現在日時を取得
     jst_timezone = datetime.timezone(datetime.timedelta(hours=9), "JST")
     current_datetime = datetime.datetime.now(jst_timezone)
-    date_string = current_datetime.strftime("%y年%m月%d日")
-
-    # バックアップフォルダを作成し、そこに日付を入れたファイル名で保存
-    backup_file_path = os.path.join(
-        os.path.dirname(file_path),
-        "backup",
-        f"{os.path.splitext(os.path.basename(file_path))[0]}_{date_string}_backup{{}}.txt",
-    )
+    if date_string == "not_date":
+        # バックアップフォルダを作成て保存
+        backup_file_path = os.path.join(
+            os.path.dirname(file_path),
+            "backup",
+            f"{os.path.splitext(os.path.basename(file_path))[0]}_backup{{}}.txt",
+        )
+        
+    else:
+        date_string = current_datetime.strftime("%y年%m月%d日")
+        # バックアップフォルダを作成し、そこに日付を入れたファイル名で保存
+        backup_file_path = os.path.join(
+            os.path.dirname(file_path),
+            "backup",
+            f"{os.path.splitext(os.path.basename(file_path))[0]}_{date_string}_backup{{}}.txt",
+        )
     # バックアップファイルを保存
     write_file(
         unique_path(backup_file_path, existing_text=file_content),
