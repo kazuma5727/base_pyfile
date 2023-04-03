@@ -1,10 +1,11 @@
 import datetime
 import os
 from logging import NullHandler, getLogger
+from pathlib import Path
 from typing import List, Optional, Tuple, Union
 
 from base_pyfile.log_setting import get_log_handler, make_logger
-from base_pyfile.path_manager import get_files, unique_path
+from base_pyfile.path_manager import get_files, make_directory, unique_path
 
 logger = getLogger("log").getChild(__name__)
 logger.addHandler(NullHandler())
@@ -95,17 +96,21 @@ def write_file(
 
     # バックアップを作成し、上書き保存をする
     if back_up_mode and os.path.exists(file_path):
-        logger.info("既に書き込み先にはファイルが存在しています。バックアップを作成して上書き保存をします")
-        backup_file(file_path,back_up_mode)
+        file = read_text_file(file_path)
+        if file == write_text:
+            logger.info("既に書き込み先には同一ファイルが存在しています。")
+        else:        
+            logger.info("既に書き込み先にはファイルが存在しています。バックアップを作成して上書き保存をします")
+            backup_file(file_path, back_up_mode)
 
     # ファイルを開いて書き込む
-    with open(file_path, write_mode, encoding=file_encoding) as f:
+    with open(make_directory(file_path), write_mode, encoding=file_encoding) as f:
         f.write(write_text)
 
     logger.debug(f"{file_path}にテキストファイルを保存しました")
 
 
-def backup_file(file_path: str,date_string=True) -> None:
+def backup_file(file_path: str, date_string=True) -> None:
     """
     ファイルのバックアップを作成します。
 
@@ -128,7 +133,7 @@ def backup_file(file_path: str,date_string=True) -> None:
             "backup",
             f"{os.path.splitext(os.path.basename(file_path))[0]}_backup{{}}.txt",
         )
-        
+
     else:
         date_string = current_datetime.strftime("%y年%m月%d日")
         # バックアップフォルダを作成し、そこに日付を入れたファイル名で保存
