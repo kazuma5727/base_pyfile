@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import List, Optional, Tuple, Union
 
 from base_pyfile.log_setting import get_log_handler, make_logger
-from base_pyfile.path_manager import get_files, make_directory, unique_path
+from base_pyfile.path_manager import get_files, unique_path
 
 logger = getLogger("log").getChild(__name__)
 logger.addHandler(NullHandler())
@@ -107,7 +107,9 @@ def write_file(
             backup_file(file_path, back_up_mode)
 
     # ファイルを開いて書き込む
-    with open(make_directory(file_path), write_mode, encoding=file_encoding) as f:
+    with open(
+        file_path.mkdir(parents=True, exist_ok=True), write_mode, encoding=file_encoding
+    ) as f:
         f.write(write_text)
 
     logger.debug(f"{file_path}にテキストファイルを保存しました")
