@@ -2,7 +2,8 @@ import os
 import re
 from functools import cache
 from logging import NullHandler, getLogger
-from typing import List, Optional
+from pathlib import Path
+from typing import List, Optional, Union
 
 try:
     from natsort import natsorted
@@ -38,9 +39,17 @@ def unique_path(
     """
     global existing_files
 
+    # Pathオブジェクトの場合、文字列に変換する
+    if isinstance(file_path, Path):
+        file_path = file_path.as_posix()
+    else:
+        file_path = str(file_path)
+
+    # すでに存在するファイルのリストにファイルパスを追加する
     if not file_path in existing_files:
         existing_files[file_path] = counter
 
+    # ファイル名と拡張子を分離する
     base, ext = os.path.splitext(file_path)
 
     # ファイル名が存在しない場合、そのまま返す
@@ -78,7 +87,7 @@ def unique_path(
                         logger.info("同じテキストがあります")
                         return new_path.format(existing_files[file_path])
             except ImportError:
-                logger.error("module_pathが通って居ない可能性があります")
+                logger.error("module_pathが通っていない可能性があります")
 
         if existing_image:
             # 同一画像ファイル確認
@@ -102,57 +111,59 @@ def unique_path(
         make_directory(os.path.dirname(new_path.format(existing_files[file_path])))
     else:
         make_directory(new_path.format(existing_files[file_path]))
+
     return new_path.format(existing_files[file_path])
 
 
 @cache
-def make_directory(path: str) -> str:
+def make_directory(path):
     """指定されたパスのディレクトリを作成します。
 
     Args:
-        path (str): 作成するディレクトリのパス
+        path (str or Path): 作成するディレクトリのパス
 
     Returns:
-        str: 渡されたパスをそのまま返します。
+        str or Path: 渡されたパスをそのまま返します。
     """
-    if "." in os.path.basename(path):
-        directory = os.path.dirname(os.path.abspath(path))
+    path_obj = Path(path)
+    if "." in path_obj.name:
+        directory = path_obj.parent.absolute()
     else:
-        directory = os.path.abspath(path)
+        directory = path_obj.absolute()
 
-    os.makedirs(directory, exist_ok=True)
+    directory.mkdir(parents=True, exist_ok=True)
     logger.debug(f"{directory}のディレクトリを作成しました")
 
     return path
 
 
-def get_files(path: str, choice_key: str = "") -> List[str]:
+def get_files(path: Path, choice_key: str = "") -> List[Path]:
     """フォルダー内にあるすべてのファイルを絶対パスでリストとして返す。
 
     Args:
-        path (str): ファイルまたはフォルダーの絶対パス
+        path (Path): ファイルまたはフォルダーの絶対パス
         choice_key (str): ファイル名に含まれる必要のあるキーワード
 
     Returns:
-        List[str]: ファイルパスのリスト。choice_keyが指定されている場合は、キーワードが含まれるファイルのみをリスト化する。
+        List[Path]: ファイルパスのリスト。choice_keyが指定されている場合は、キーワードが含まれるファイルのみをリスト化する。
     """
 
     # 絶対パスを取得する
-    abs_path = os.path.abspath(path)
+    abs_path = Path(path).resolve()
 
     # パスがファイルの場合
-    if os.path.isfile(abs_path):
+    if abs_path.is_file():
         # choice_keyがパスに含まれている場合はそのパスを返す
-        return [abs_path] if choice_key in abs_path else []
+        return [abs_path] if choice_key in abs_path.name else []
     # パスがフォルダーの場合
-    elif os.path.isdir(abs_path):
+    elif abs_path.is_dir():
         # フォルダー内のすべてのファイルパスを取得し、choice_keyが含まれているものだけを返す
         if natsorted == sorted:
             logger.warning("sort関数を使用しているため、予期せぬ並び順になっている場合があります")
         return [
-            os.path.join(abs_path, file)
-            for file in natsorted(os.listdir(abs_path))
-            if choice_key in file
+            file_path
+            for file_path in natsorted(abs_path.glob("*"))
+            if file_path.is_file() and choice_key in file_path.name
         ]
     # その他の場合
     else:
@@ -160,66 +171,66 @@ def get_files(path: str, choice_key: str = "") -> List[str]:
         return [abs_path]
 
 
-def get_all_subfolders(directory: str, depth: Optional[int] = None) -> List[str]:
+def get_all_subfolders(directory: Union[str, Path], depth: Optional[int] = None) -> List[Path]:
     """
     指定されたディレクトリ以下の全てのフォルダを再帰的に検索し、
     フォルダパスのリストを返す。
 
     Args:
-        directory (str): 検索対象のディレクトリパス
+        directory (Union[str, Path]): 検索対象のディレクトリパス
         depth (Optional[int]): 検索する階層数。Noneの場合、全階層を検索する。
 
     Returns:
-        List[str]: ディレクトリパスのリスト（自然順にソートされている）
+        List[Path]: ディレクトリパスのリスト（自然順にソートされている）
     """
 
-    def get_subfolders(directory: str, depth: Optional[int]) -> List[str]:
+    def get_subfolders(directory: Path, depth: Optional[int]) -> List[Path]:
         """
         指定されたディレクトリ以下のフォルダを再帰的に検索し、
         フォルダパスのリストを返す。
 
         Args:
-            directory (str): 検索対象のディレクトリパス
+            directory (Path): 検索対象のディレクトリパス
             depth (Optional[int]): 検索する階層数。Noneの場合、全階層を検索する。
 
         Returns:
-            List[str]: ディレクトリパスのリスト
+            List[Path]: ディレクトリパスのリスト
         """
         subfolders = []
-        with os.scandir(directory) as entries:
-            for entry in entries:
-                if entry.is_dir():
-                    if depth is None or depth >= 1:
-                        subfolders.extend(get_subfolders(entry.path, depth - 1 if depth else None))
-                    subfolders.append(entry.path)
-                # elif entry.is_file():
-                #     subfolders.append(entry.path)
+        for entry in directory.iterdir():
+            if entry.is_dir():
+                if depth is None or depth >= 1:
+                    subfolders.extend(get_subfolders(entry, depth - 1 if depth else None))
+                subfolders.append(entry)
+
         return subfolders
 
-    directory = os.path.abspath(directory)
+    directory = Path(directory).resolve()
     return natsorted(get_subfolders(directory, depth))
 
 
-def get_all_files(directory: str, choice_key: str = "", depth: Optional[int] = None) -> List[str]:
+def get_all_files(
+    directory: Union[str, Path], choice_key: str = "", depth: Optional[int] = None
+) -> List[Path]:
     """
     指定されたディレクトリ以下の全てのファイルを再帰的に検索し、
     ファイルパスのリストを返す。
+
     Args:
-        directory (str): 検索対象のディレクトリパス
+        directory (Union[str, Path]): 検索対象のディレクトリパス
         choice_key (str): ファイル名に含まれる必要のあるキーワード
         depth (Optional[int]): 検索する階層数。Noneの場合、全階層を検索する。
+
     Returns:
-        List[str]: ファイルパスのリスト（自然順にソートされている）
+        List[Path]: ファイルパスのリスト（自然順にソートされている）
     """
-    file_set = set()
+    file_paths = get_files(directory)
     for folder in get_all_subfolders(directory, depth):
         files = get_files(folder, choice_key=choice_key)
         # ファイルだけを抽出する
-        files_only = [file for file in files if os.path.isfile(file)]
-        file_set.update(set(files_only))
+        files_only = [file for file in files if file.is_file()]
+        file_paths.extend(files_only)
 
-    file_paths = list(file_set)
-    
     if natsorted == sorted:
         logger.warning("sort関数を使用しているため、予期せぬ並び順になっている場合があります")
     return natsorted(file_paths)
@@ -229,6 +240,7 @@ if __name__ == "__main__":
     logger = make_logger(handler=get_log_handler(10))
 
     # sample
-    get_files(r"")
-    get_all_subfolders(r"")
-    get_all_files(r"")
+    # print(get_files(r""))
+    # print(get_all_subfolders(r""))
+    for a in get_all_files(r""):
+        print(a)

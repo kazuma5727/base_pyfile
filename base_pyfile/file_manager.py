@@ -15,13 +15,13 @@ existing_files = {}
 
 
 def read_text_file(
-    file_path: str, delimiter: Optional[str] = None, return_encoding: bool = False
+    file_path: Union[str, Path], delimiter: Optional[str] = None, return_encoding: bool = False
 ) -> Union[str, Tuple[List[str], str]]:
     """
     テキストファイルを読み込み、指定された区切り文字で分割して返します。
 
     Args:
-        file_path (str): ファイルパス
+        file_path (Path): ファイルパス
         delimiter (Optional[str], optional): 区切り文字。デフォルトはNone
         return_encoding (bool, optional): エンコーディングを返すかどうかを指定するフラグ。デフォルトはFalse
 
@@ -29,7 +29,7 @@ def read_text_file(
         Union[str, Tuple[List[str], str]]: テキストファイルの内容を文字列で返す場合と、
         指定された区切り文字で分割したテキストを含むリストとエンコーディングを含むタプルのどちらかを返します
     """
-
+    file_path = Path(file_path)
     encodings = ["utf-8", "Shift_JIS", "euc_jp", "iso2022_jp"]
     # 一般的なエンコーディングのリストでファイルを開きます
     for file_encoding in encodings:
@@ -58,9 +58,9 @@ def read_text_file(
 
 
 def write_file(
-    file_path: str,
+    file_path: Union[str, Path],
     write_text: str = "",
-    extension="txt",
+    extension=".txt",
     file_encoding: str = "utf-8",
     write_mode: str = "w",
     back_up_mode: bool = True,
@@ -70,7 +70,7 @@ def write_file(
 
     Parameters
     ----------
-    file_path : str
+    file_path : Union[str, Path]
         書き込み先ファイルのパス
     write_text : str, optional
         書き込むテキスト。デフォルトは空文字列
@@ -97,10 +97,6 @@ def write_file(
         logger.info(f"拡張子が{extension}ではありません\n{extension}に変更します")
         file_path = file_path.with_suffix(extension)
 
-    if not (file_path.endswith(f"{extension}")):
-        logger.info(f"拡張子が{extension}ではありません\n{extension}に変更します")
-        file_path = os.path.splitext(file_path)[0] + f"{extension}"
-
     # バックアップを作成し、上書き保存をする
     if back_up_mode and file_path.exists():
         file = read_text_file(file_path)
@@ -117,12 +113,12 @@ def write_file(
     logger.debug(f"{file_path}にテキストファイルを保存しました")
 
 
-def backup_file(file_path: str, date_string=True) -> None:
+def backup_file(file_path: Union[str, Path], date_string=True) -> None:
     """
     ファイルのバックアップを作成します。
 
     Args:
-        file_path (str): バックアップを作成するファイルのパス。
+        file_path (Path): バックアップを作成するファイルのパス。
         date_string (bool): バックアップファイルに日付を入れるかどうかの判定。
 
     Returns:
