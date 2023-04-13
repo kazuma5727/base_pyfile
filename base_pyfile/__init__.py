@@ -5,6 +5,7 @@ from base_pyfile.path_manager import (
     get_all_files,
     get_all_subfolders,
     get_files,
+    get_folders_and_files,
     make_directory,
     unique_path,
 )
@@ -20,6 +21,7 @@ __all__ = [
     "get_all_files",
     "get_all_subfolders",
     "get_files",
+    "get_folders_and_files",
     "make_directory",
     "unique_path",
     "download_image",
@@ -30,4 +32,4 @@ num_modules = len(__all__)
 # バージョン番号を更新
 tens_place = num_modules // 10
 ones_place = num_modules % 10
-__version__ = f"{tens_place}.{ones_place}.3"
+__version__ = f"{tens_place}.{ones_place}.0"

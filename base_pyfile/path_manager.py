@@ -236,11 +236,18 @@ def get_all_files(
     return natsorted(file_paths)
 
 
+import os
+
+
+def get_folders_and_files(directory: Union[str, Path]):
+    return get_all_subfolders(directory, 0) + get_files(directory)
+
+
 if __name__ == "__main__":
     logger = make_logger(handler=get_log_handler(10))
 
     # sample
     # print(get_files(r""))
     # print(get_all_subfolders(r""))
-    for a in get_all_files(r""):
+    for a in get_folders_and_files(r"../.."):
         print(a)
