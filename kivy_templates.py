@@ -3,6 +3,7 @@ import os
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from logging import NullHandler, getLogger
+from pathlib import Path
 
 # import cv2
 from kivy.app import App
@@ -14,9 +15,18 @@ from kivy.properties import BooleanProperty, NumericProperty, StringProperty
 from kivy.resources import resource_add_path
 from kivy.uix.widget import Widget
 
-from base_pyfile.file_manager import read_text_file, write_file
-from base_pyfile.log_setting import get_log_handler, make_logger
-from base_pyfile.path_manager import get_files, unique_path
+from base_pyfile import (
+    get_all_files,
+    get_all_subfolders,
+    get_files,
+    get_log_handler,
+    logger_timer,
+    make_directory,
+    make_logger,
+    read_text_file,
+    unique_path,
+    write_file,
+)
 
 logger = getLogger("log").getChild(__name__)
 logger.addHandler(NullHandler())
@@ -35,7 +45,7 @@ class ImageWidget(Widget):
     height = "height"
     Auto_mode = "Auto_mode"
 
-    ini_file = f"{os.path.splitext(__file__)[0]}.ini"
+    ini_file = Path(__file__).parents[0] / f"{Path(__file__).stem}.ini"
     config = configparser.ConfigParser()
     config.read(ini_file)
 

@@ -137,38 +137,30 @@ def make_directory(path):
     return path
 
 
-def get_files(path: Path, choice_key: str = "") -> List[Path]:
+def get_files(directory: Path, choice_key: str = "") -> List[Path]:
     """フォルダー内にあるすべてのファイルを絶対パスでリストとして返す。
 
     Args:
-        path (Path): ファイルまたはフォルダーの絶対パス
+        directory (Path): ファイルまたはフォルダーの絶対パス
         choice_key (str): ファイル名に含まれる必要のあるキーワード
 
     Returns:
         List[Path]: ファイルパスのリスト。choice_keyが指定されている場合は、キーワードが含まれるファイルのみをリスト化する。
     """
-
     # 絶対パスを取得する
-    abs_path = Path(path).resolve()
+    directory = Path(directory).resolve()
 
-    # パスがファイルの場合
-    if abs_path.is_file():
-        # choice_keyがパスに含まれている場合はそのパスを返す
-        return [abs_path] if choice_key in abs_path.name else []
-    # パスがフォルダーの場合
-    elif abs_path.is_dir():
-        # フォルダー内のすべてのファイルパスを取得し、choice_keyが含まれているものだけを返す
-        if natsorted == sorted:
-            logger.warning("sort関数を使用しているため、予期せぬ並び順になっている場合があります")
-        return [
-            file_path
-            for file_path in natsorted(abs_path.glob("*"))
-            if file_path.is_file() and choice_key in file_path.name
+    return (
+        [
+            files
+            for files in natsorted(directory.iterdir())
+            if files.isfile() and choice_key in files.name
         ]
-    # その他の場合
-    else:
-        logger.error("ファイルまたはフォルダーが見つかりません")
-        return [abs_path]
+        if directory.is_dir()
+        else [directory]
+        if directory.is_file() and choice_key in directory.name
+        else []
+    )
 
 
 def get_all_subfolders(directory: Union[str, Path], depth: Optional[int] = None) -> List[Path]:
@@ -206,7 +198,7 @@ def get_all_subfolders(directory: Union[str, Path], depth: Optional[int] = None)
         return subfolders
 
     directory = Path(directory).resolve()
-    return natsorted(get_subfolders(directory, depth))
+    return [natsorted(get_subfolders(directory, depth))] if directory.is_dir() else []
 
 
 def get_all_files(
@@ -224,22 +216,28 @@ def get_all_files(
     Returns:
         List[Path]: ファイルパスのリスト（自然順にソートされている）
     """
-    file_paths = get_files(directory)
+    file_paths = get_files(directory, choice_key=choice_key)
     for folder in get_all_subfolders(directory, depth):
         files = get_files(folder, choice_key=choice_key)
         # ファイルだけを抽出する
-        files_only = [file for file in files if file.is_file()]
-        file_paths.extend(files_only)
+        file_paths.extend(files)
 
     if natsorted == sorted:
         logger.warning("sort関数を使用しているため、予期せぬ並び順になっている場合があります")
     return natsorted(file_paths)
 
 
-import os
+def get_folders_and_files(directory: Union[str, Path]) -> list[Path]:
+    """
+    指定されたディレクトリに入っているフォルダとファイルをリストで返す。
+    Args:
+        directory (Union[str, Path]): フォルダパスを表す文字列またはPathオブジェクト
 
+    Returns:
+        list[Path]: フォルダおよびファイルのパスを表すPathオブジェクトのリスト
+    """
 
-def get_folders_and_files(directory: Union[str, Path]):
+    directory = Path(directory).resolve()
     return get_all_subfolders(directory, 0) + get_files(directory)
 
 
