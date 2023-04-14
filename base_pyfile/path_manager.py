@@ -154,7 +154,7 @@ def get_files(directory: Path, choice_key: str = "") -> List[Path]:
         [
             files
             for files in natsorted(directory.iterdir())
-            if files.isfile() and choice_key in files.name
+            if files.is_file() and choice_key in files.name
         ]
         if directory.is_dir()
         else [directory]
@@ -247,5 +247,7 @@ if __name__ == "__main__":
     # sample
     # print(get_files(r""))
     # print(get_all_subfolders(r""))
-    for a in get_folders_and_files(r"../.."):
-        print(a)
+    directory=Path(r"F:\Lexar")
+
+
+    print(get_folders_and_files(directory))
