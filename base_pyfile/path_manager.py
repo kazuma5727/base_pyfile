@@ -240,8 +240,23 @@ def get_folders_and_files(directory: Union[str, Path]) -> list[Path]:
     directory = Path(directory).resolve()
     return get_all_subfolders(directory, 0) + get_files(directory)
 
-# 渡されたに対して、空のファイルをリストで返す
-def find_empty_folders(folder_list):
+def find_empty_folders(folder_list: Union[str, Path, List[Union[str, Path]]]) -> List[Path]:
+    """
+    渡されたフォルダのリストから、空のフォルダを探してリストで返す。
+    
+    Args:
+    ・folder_list: strまたはPathまたはstrまたはPathのリスト。調査するフォルダのリスト。
+    
+    Returns:
+    ・empty_folders: Pathのリスト。空のフォルダのリスト。
+
+    Raises:
+    ・なし
+    """
+    # フォルダがリストでない場合、リストに変換する
+    if isinstance(folder_list,(str,Path)):
+        folder_list = [folder_list]    
+
     empty_folders = []
     for folder in folder_list:
         folder = Path(folder)
