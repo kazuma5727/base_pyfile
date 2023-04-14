@@ -198,7 +198,7 @@ def get_all_subfolders(directory: Union[str, Path], depth: Optional[int] = None)
         return subfolders
 
     directory = Path(directory).resolve()
-    return [natsorted(get_subfolders(directory, depth))] if directory.is_dir() else []
+    return natsorted(get_subfolders(directory, depth)) if directory.is_dir() else []
 
 
 def get_all_files(
@@ -239,6 +239,16 @@ def get_folders_and_files(directory: Union[str, Path]) -> list[Path]:
 
     directory = Path(directory).resolve()
     return get_all_subfolders(directory, 0) + get_files(directory)
+
+# 渡されたに対して、空のファイルをリストで返す
+def find_empty_folders(folder_list):
+    empty_folders = []
+    for folder in folder_list:
+        folder = Path(folder)
+        if not get_folders_and_files(folder):
+            empty_folders.append(folder)
+    return empty_folders
+
 
 
 if __name__ == "__main__":
