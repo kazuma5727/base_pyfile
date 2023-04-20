@@ -4,7 +4,12 @@ import base_pyfile
 
 # mypackage.__version__ を取得する
 version = base_pyfile.__version__
-requirements = base_pyfile.read_text_file("requirements.txt", "\n")
+
+requirements = []
+with open("requirements.txt", "r", encoding="utf-8") as fh:
+    for line in fh:
+        line = line.strip()
+        requirements.append(line)
 
 setup(
     name="base_pyfile",

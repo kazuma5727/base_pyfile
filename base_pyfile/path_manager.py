@@ -240,13 +240,14 @@ def get_folders_and_files(directory: Union[str, Path]) -> list[Path]:
     directory = Path(directory).resolve()
     return get_all_subfolders(directory, 0) + get_files(directory)
 
+
 def find_empty_folders(folder_list: Union[str, Path, List[Union[str, Path]]]) -> List[Path]:
     """
     渡されたフォルダのリストから、空のフォルダを探してリストで返す。
-    
+
     Args:
     ・folder_list: strまたはPathまたはstrまたはPathのリスト。調査するフォルダのリスト。
-    
+
     Returns:
     ・empty_folders: Pathのリスト。空のフォルダのリスト。
 
@@ -254,8 +255,8 @@ def find_empty_folders(folder_list: Union[str, Path, List[Union[str, Path]]]) ->
     ・なし
     """
     # フォルダがリストでない場合、リストに変換する
-    if isinstance(folder_list,(str,Path)):
-        folder_list = [folder_list]    
+    if isinstance(folder_list, (str, Path)):
+        folder_list = [folder_list]
 
     empty_folders = []
     for folder in folder_list:
@@ -265,14 +266,13 @@ def find_empty_folders(folder_list: Union[str, Path, List[Union[str, Path]]]) ->
     return empty_folders
 
 
-
 if __name__ == "__main__":
     logger = make_logger(handler=get_log_handler(10))
 
     # sample
     # print(get_files(r""))
     # print(get_all_subfolders(r""))
-    directory=Path(r"F:\Lexar")
+    directory = Path(r"F:\Lexar")
 
-
-    print(get_folders_and_files(directory))
+    for i in get_all_subfolders(directory):
+        print(i)
