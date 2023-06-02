@@ -1,2 +1,4 @@
 natsort
 BeautifulSoup4
+ruamel.yaml
+tqdm
