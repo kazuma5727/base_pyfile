@@ -39,6 +39,7 @@ def read_text_file(
                 break
         except:
             text = ""
+
     else:
         logger.warning(f"{file_path}を開くのに失敗しました")
         logger.warning("空の文字列を返します")
@@ -49,6 +50,8 @@ def read_text_file(
         else:
             logger.info(rf"{delimiter}でリスト化しました")
         text = text.split(delimiter)
+        if text[-1] == "":
+            text = text[:-1]
 
     if return_encoding:
         logger.info(f"エンコードは{file_encoding}")

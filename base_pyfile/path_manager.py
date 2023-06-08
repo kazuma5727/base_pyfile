@@ -75,7 +75,7 @@ def unique_path(
             make_directory(return_path)
         return return_path
 
-    while os.path.exists(new_path.format(existing_files[file_path])):
+    while os.path.exists(new_path.format(existing_files[file_path])) or os.path.exists(new_path.format("")):
         if existing_text:
             # 同一テキストファイル確認
             try:
