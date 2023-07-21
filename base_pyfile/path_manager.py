@@ -75,7 +75,9 @@ def unique_path(
             make_directory(return_path)
         return return_path
 
-    while os.path.exists(new_path.format(existing_files[file_path])) or os.path.exists(new_path.format("")):
+    while os.path.exists(new_path.format(existing_files[file_path])) or os.path.exists(
+        new_path.format("")
+    ):
         if existing_text:
             # 同一テキストファイル確認
             try:
@@ -236,7 +238,6 @@ def get_folders_and_files(directory: Union[str, Path]) -> list[Path]:
     Returns:
         list[Path]: フォルダおよびファイルのパスを表すPathオブジェクトのリスト
     """
-
     directory = Path(directory).resolve()
     return get_all_subfolders(directory, 0) + get_files(directory)
 
@@ -264,6 +265,78 @@ def find_empty_folders(folder_list: Union[str, Path, List[Union[str, Path]]]) ->
         if not get_folders_and_files(folder):
             empty_folders.append(folder)
     return empty_folders
+
+
+def sanitize_windows_filename(non_regular_path: Union[str, Path]) -> Path:
+    """
+    Windowsのファイル名として不正な文字を正規化します。
+
+    Args:
+        non_regular_path (Union[str, Path]): 正規化する前のパス（文字列またはPathオブジェクト）
+
+    Returns:
+        Path: 不正な文字が正規化された後のパス（Pathオブジェクト）
+
+    使用例:
+        >>> sanitize_windows_filename("C:/Users/User/Documents<>file.txt")
+        PosixPath('C:/Users/User/Documents＜＞file.txt')
+    """
+
+    # 不正な文字を正規な文字に置換するための変換テーブルを作成します
+    translation_table = str.maketrans(
+        {
+            "<": "＜",
+            ">": "＞",
+            ":": "：",
+            '"': "”",
+            # "/": "／",
+            # "\\": "＼",
+            "|": "｜",
+            "?": "？",
+            "*": "＊",
+        }
+    )
+
+    # 入力のパス文字列をPathオブジェクトに変換します
+    non_regular_path = Path(non_regular_path)
+
+    # ファイル名の不正な文字を置換して、正規のファイル名を取得します
+    regular_path = Path((non_regular_path.stem).translate(translation_table).strip())
+    base_name = regular_path.stem
+
+    # 特定の文字列はWindowsファイルシステムで予約されており、ファイル名として使用できないため、
+    # 予約された文字列の場合は"_file"を付加して回避します
+    if base_name.upper() in [
+        "CON",
+        "PRN",
+        "AUX",
+        "NUL",
+        "COM1",
+        "COM2",
+        "COM3",
+        "COM4",
+        "COM5",
+        "COM6",
+        "COM7",
+        "COM8",
+        "COM9",
+        "LPT1",
+        "LPT2",
+        "LPT3",
+        "LPT4",
+        "LPT5",
+        "LPT6",
+        "LPT7",
+        "LPT8",
+        "LPT9",
+    ]:
+        base_name += "_file"
+
+    # 置換と予約文字列の処理を終えた正規化されたファイル名を元のパスと結合して、
+    # 不正な文字を置換した正規化されたパスを取得します
+    sanitized_path = non_regular_path.with_name(base_name + non_regular_path.suffix)
+
+    return non_regular_path.parent / sanitized_path
 
 
 if __name__ == "__main__":
