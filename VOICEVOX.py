@@ -7,7 +7,8 @@ import time
 import wave
 from functools import cache
 from logging import NullHandler, getLogger
-from typing import Dict, List, Optional
+from pathlib import Path
+from typing import Dict, List, Optional, Union
 
 import requests
 
@@ -182,7 +183,11 @@ def generate_wav(text: str, speaker: int = 3, output_path: str = "audio.wav") ->
 
 
 def VOICEVOX_output(
-    path_or_text: str, speaker: int = 8, output_dir: str = "", delimiter="\n", progressbar=progress
+    path_or_text: str,
+    speaker: int = 8,
+    output_dir: Union[str, Path] = None,
+    delimiter="\n",
+    progressbar=progress,
 ) -> bool:
     """
     テキストファイルを読み込み、1行ずつVOICEVOXで音声を生成します。
@@ -196,21 +201,25 @@ def VOICEVOX_output(
     Returns:
         bool: すべての行が正常に処理された場合はTrue、それ以外の場合はFalseを返します。
     """
+    if isinstance(output_dir, str):
+        output_dir = Path(output_dir)
 
-    if os.path.exists(path_or_text):
+    if os.path.isfile(path_or_text):
+        text_file = Path(path_or_text)
         text = read_text_file(path_or_text)
 
     else:
-        text = path_or_text
+        text_file = Path("")
+        text = str(path_or_text)
 
-    if not output_dir and os.path.exists(path_or_text):
-        output_dir = f"{os.path.splitext(path_or_text)[0] }_{{}}"
+    if not output_dir and text_file.is_file():
+        output_dir = Path(text_file.parent / (text_file.stem + r"_{}"))
 
     elif not output_dir:
-        output_dir = f"音声{{}}"
+        output_dir = Path(r"音声{}")
 
-    elif os.path.isfile(output_dir):
-        output_dir = os.path.splitext(output_dir)[0] + "_{}"
+    elif output_dir.is_file():
+        output_dir = output_dir.resolve().parent / (output_dir.stem + r"_{}")
 
     voice_number = 0
 
@@ -220,8 +229,11 @@ def VOICEVOX_output(
         huri = "｜.*?《"
         for rub in re.findall(huri, text):
             text = text.replace(rub, "")
-
+    if delimiter:
         text = text.split(delimiter)
+    else:
+        text = [text]
+        logger.warning("delimiterが指定されていないため、文字列のみに変換されます。")
     # 桁数を取得
     zero_count = r"{:0" + str(len(str(len(text)))) + r"}_{}.wav"
     subprocess.Popen([r"D:\0soft\VOICEVOX\VOICEVOX.exe"], shell=True)
@@ -245,12 +257,11 @@ def VOICEVOX_output(
             t,
             speaker + voice_number,
             unique_path(
-                os.path.join(
-                    output_dir,
-                    zero_count.format(e + _e, get_speaker_name_by_id(speaker + voice_number)),
-                )
+                output_dir
+                / zero_count.format(e + _e, get_speaker_name_by_id(speaker + voice_number)),
             ),
         )
+
         if not success:
             logger.error(f'"{text}" の音声生成に失敗しました。')
             return success
@@ -263,14 +274,3 @@ if __name__ == "__main__":
     path = r"E:\Lexar\短編.txt"
 
     VOICEVOX_output(path, delimiter="\n")
-
-
-# VOICEBOX_global
-# C:\python\vpython\Lib\site-packages\urllib3\response.py
-# 630行目
-# try:
-#     import global_value as Vg
-#     kana=data.decode('utf-8')
-#     Vg.g_kana=kana[kana[:-2].find("kana")+7:-2]
-# except:
-#     pass
