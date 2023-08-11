@@ -136,7 +136,7 @@ def backup_file(file_path: Union[str, Path], date_string=True) -> None:
     current_datetime = datetime.datetime.now(jst_timezone)
 
     if date_string == "not_date":
-        # バックアップフォルダを作成て保存
+        # バックアップフォルダを作成して保存
         backup_file_path = file_path.parent / "backup" / f"{file_path.stem}_backup{{}}.txt"
 
     else:
