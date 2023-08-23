@@ -339,6 +339,26 @@ def sanitize_windows_filename(non_regular_path: Union[str, Path]) -> Path:
     return non_regular_path.parent / sanitized_path
 
 
+def get_latest_folder(directory: str) -> Path:
+    """
+    指定されたディレクトリ内で最も最近更新されたフォルダーの絶対パスを取得します。
+
+    Parameters:
+        directory (str): 最も最近のフォルダーを検索するディレクトリのパス。
+
+    Returns:
+        Path: 最も最近更新されたフォルダーの絶対パス。
+    """
+    # フォルダーのリストを取得
+    directory_path = Path(directory)
+    folders = [folder for folder in directory_path.iterdir() if folder.is_dir()]
+
+    # フォルダーの更新時刻を取得して最も新しいものを見つける
+    latest_folder = max(folders, key=lambda folder: folder.stat().st_mtime)
+
+    # 最も新しいフォルダーの絶対パスを返す
+    return latest_folder
+
 if __name__ == "__main__":
     logger = make_logger(handler=get_log_handler(10))
 

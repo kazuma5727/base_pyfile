@@ -7,6 +7,7 @@ from base_pyfile.path_manager import (
     get_all_subfolders,
     get_files,
     get_folders_and_files,
+    get_latest_folder,
     make_directory,
     sanitize_windows_filename,
     unique_path,
@@ -26,6 +27,7 @@ __all__ = [
     "get_all_subfolders",
     "get_files",
     "get_folders_and_files",
+    "get_latest_folder",
     "make_directory",
     "sanitize_windows_filename"
     "unique_path",

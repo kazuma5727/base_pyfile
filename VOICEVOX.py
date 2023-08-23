@@ -244,7 +244,7 @@ def VOICEVOX_output(
             _e -= 1
             continue
 
-        # もし、文字列tに「、「（」または「(」のいずれかが含まれている場合、voice変更
+        # もし、文字列tに「、（または(のいずれかが含まれている場合、voice変更
         if any(c in "「（(" for c in t):
             voice_number += 1
 
