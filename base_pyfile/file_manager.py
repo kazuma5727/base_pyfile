@@ -109,6 +109,10 @@ def write_file(
             logger.info("既に書き込み先にはファイルが存在しています。バックアップを作成して上書き保存をします")
             backup_file(file_path, back_up_mode)
 
+    if write_mode == "a" and file_path.exists():
+        write_text = read_text_file(file_path) + write_text
+        write_mode == "w"
+
     # ファイルを開いて書き込む
     with open(make_directory(file_path), write_mode, encoding=file_encoding) as f:
         f.write(write_text)
