@@ -15,6 +15,7 @@ from logging import (
     basicConfig,
     getLogger,
 )
+from pathlib import Path
 
 # トップレベルのロガーを作成し、その子として、このモジュールのロガーを作成
 logger = getLogger("log").getChild(__name__)
@@ -25,7 +26,7 @@ logger.addHandler(NullHandler())
 
 
 def get_log_handler(
-    log_level: int = WARNING, file_path: str = sys.argv[0], log_folder: str = ""
+    log_level: int = WARNING, file_path: Path = Path(sys.argv[0]), log_folder: str = ""
 ) -> Handler:
     """ログハンドラを作成
 
@@ -42,14 +43,13 @@ def get_log_handler(
 
     # ログフォルダが指定された場合、ログフォルダを作成し、ログファイルを作成
     if log_folder:
-        if os.path.isfile(file_path):
-            file_folder_path = os.path.dirname(file_path)
-        log_folder_path = os.path.join(file_folder_path, log_folder)
-        os.makedirs(log_folder_path, exist_ok=True)
-        log_file_name = (
-            f"{LOG_LEVEL_NAMES[log_level]}_{os.path.splitext(os.path.basename(file_path))[0]}.log"
-        )
-        log_file_path = os.path.join(log_folder_path, log_file_name)
+        file_path = Path(file_path)
+        if file_path.is_file():
+            file_folder_path = file_path.parent
+        log_folder_path = file_folder_path / log_folder
+        log_folder_path.mkdir(parents=True, exist_ok=True)
+        log_file_name = f"{LOG_LEVEL_NAMES[log_level]}_{file_path.stem}.log"
+        log_file_path = log_folder_path / log_file_name
         logger.info(f"ログファイルを作成: {log_file_path}")
         handler = FileHandler(filename=log_file_path)
 
