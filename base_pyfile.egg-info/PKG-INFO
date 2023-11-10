@@ -1,0 +1,7 @@
+Metadata-Version: 2.1
+Name: base-pyfile
+Version: 8.0.208
+Requires-Dist: natsort
+Requires-Dist: BeautifulSoup4
+Requires-Dist: ruamel.yaml
+Requires-Dist: tqdm
