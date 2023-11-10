@@ -4,12 +4,11 @@ from functools import cache
 from logging import NullHandler, getLogger
 from pathlib import Path
 from typing import List, Optional, Union
-from natsort import natsorted
 
-# try:
-#     from natsort import natsorted
-# except ImportError:
-#     natsorted = sorted
+try:
+    from natsort import natsorted
+except ImportError:
+    natsorted = sorted
 
 from base_pyfile.log_setting import get_log_handler, make_logger
 
@@ -85,7 +84,9 @@ def unique_path(
                 if new_path.format(existing_files[file_path]) and existing_text:
                     from file_manager import read_text_file
 
-                    before_text = read_text_file(new_path.format(existing_files[file_path]))
+                    before_text = read_text_file(
+                        new_path.format(existing_files[file_path])
+                    )
                     if before_text == existing_text:
                         logger.info("同じテキストがあります")
                         return new_path.format(existing_files[file_path])
@@ -102,7 +103,8 @@ def unique_path(
                     existing_image, np.ndarray
                 ):
                     if np.array_equal(
-                        cv2.imread(new_path.format(existing_files[file_path])), existing_image
+                        cv2.imread(new_path.format(existing_files[file_path])),
+                        existing_image,
                     ):
                         logger.info("同じ画像があります")
                         return new_path.format(existing_files[file_path])
@@ -166,7 +168,9 @@ def get_files(directory: Path, choice_key: str = "") -> List[Path]:
     )
 
 
-def get_all_subfolders(directory: Union[str, Path], depth: Optional[int] = None) -> List[Path]:
+def get_all_subfolders(
+    directory: Union[str, Path], depth: Optional[int] = None
+) -> List[Path]:
     """
     指定されたディレクトリ以下の全てのフォルダを再帰的に検索し、
     フォルダパスのリストを返す。
@@ -195,7 +199,9 @@ def get_all_subfolders(directory: Union[str, Path], depth: Optional[int] = None)
         for entry in directory.iterdir():
             if entry.is_dir():
                 if depth is None or depth >= 1:
-                    subfolders.extend(get_subfolders(entry, depth - 1 if depth else None))
+                    subfolders.extend(
+                        get_subfolders(entry, depth - 1 if depth else None)
+                    )
                 subfolders.append(entry)
 
         return subfolders
@@ -243,7 +249,9 @@ def get_folders_and_files(directory: Union[str, Path]) -> list[Path]:
     return get_all_subfolders(directory, 0) + get_files(directory)
 
 
-def find_empty_folders(folder_list: Union[str, Path, List[Union[str, Path]]]) -> List[Path]:
+def find_empty_folders(
+    folder_list: Union[str, Path, List[Union[str, Path]]]
+) -> List[Path]:
     """
     渡されたフォルダのリストから、空のフォルダを探してリストで返す。
 
@@ -359,6 +367,7 @@ def get_latest_folder(directory: str) -> Path:
 
     # 最も新しいフォルダーの絶対パスを返す
     return latest_folder
+
 
 if __name__ == "__main__":
     logger = make_logger(handler=get_log_handler(10))
