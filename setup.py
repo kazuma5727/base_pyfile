@@ -3,26 +3,17 @@ from pathlib import Path
 
 from setuptools import find_packages, setup
 
-import base_pyfile
 
 # Settings
 FILE = Path(__file__).resolve()
 PARENT = FILE.parent  # root directory
+try:
+    import base_pyfile
 
-
-# mypackage.__version__ を取得する
-version = base_pyfile.__version__
-# def get_version():
-#     """
-#     Retrieve the version number from the 'ultralytics/__init__.py' file.
-
-#     Returns:
-#         (str): The version number extracted from the '__version__' attribute in the 'ultralytics/__init__.py' file.
-#     """
-#     file = PARENT / "base_pyfile/__init__.py"
-#     return re.search(
-#         r'^__version__ = [\'"]([^\'"]*)[\'"]', file.read_text(encoding="utf-8"), re.M
-#     )[1]
+    # mypackage.__version__ を取得する
+    version = base_pyfile.__version__
+except:
+    version = "0.0.0"
 
 
 def parse_requirements(file_path: Path):

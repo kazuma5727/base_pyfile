@@ -12,7 +12,7 @@ from base_pyfile.path_manager import (
     sanitize_windows_filename,
     unique_path,
 )
-__version__ = '8.0.208'
+
 # from base_pyfile.scraping import download_image
 
 __all__ = [
@@ -38,5 +38,4 @@ num_modules = len(__all__)
 # バージョン番号を更新
 tens_place = num_modules // 10
 ones_place = num_modules % 10
-# __vesrsion__ = f"{tens_place}.{ones_place}.0"
-
+__version__ = f"{tens_place}.{ones_place}.0"
