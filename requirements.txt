@@ -1,7 +1,3 @@
-# base_pyfile requirements
-# Example: pip install -r requirements.txt
-
-# Base ----------------------------------------
 natsort
 BeautifulSoup4
 ruamel.yaml

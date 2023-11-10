@@ -1,15 +1,12 @@
-import re
 from pathlib import Path
 
 from setuptools import find_packages, setup
-
 
 # Settings
 FILE = Path(__file__).resolve()
 PARENT = FILE.parent  # root directory
 try:
     import base_pyfile
-
     # mypackage.__version__ を取得する
     version = base_pyfile.__version__
 except:
@@ -36,7 +33,6 @@ def parse_requirements(file_path: Path):
     return requirements
 
 
-print(parse_requirements(PARENT / "requirements.txt"))
 setup(
     name="base_pyfile",
     version=version,
