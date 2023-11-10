@@ -4,11 +4,12 @@ from functools import cache
 from logging import NullHandler, getLogger
 from pathlib import Path
 from typing import List, Optional, Union
+from natsort import natsorted
 
-try:
-    from natsort import natsorted
-except ImportError:
-    natsorted = sorted
+# try:
+#     from natsort import natsorted
+# except ImportError:
+#     natsorted = sorted
 
 from base_pyfile.log_setting import get_log_handler, make_logger
 
