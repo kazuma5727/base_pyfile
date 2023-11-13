@@ -121,6 +121,11 @@ def unique_path(
 
 
 @cache
+def _make_directory(directory):
+    directory.mkdir(parents=True, exist_ok=True)
+    logger.debug(f"{directory}のディレクトリを作成しました")
+
+
 def make_directory(path):
     """指定されたパスのディレクトリを作成します。
 
@@ -135,11 +140,9 @@ def make_directory(path):
         directory = path_obj.parent.absolute()
     else:
         directory = path_obj.absolute()
+    _make_directory(directory)
 
-    directory.mkdir(parents=True, exist_ok=True)
-    logger.debug(f"{directory}のディレクトリを作成しました")
-
-    return path
+    return path_obj
 
 
 def get_files(directory: Path, choice_key: str = "") -> List[Path]:
