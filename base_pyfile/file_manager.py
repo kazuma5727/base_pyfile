@@ -34,9 +34,9 @@ def read_text_file(
     # 一般的なエンコーディングのリストでファイルを開きます
     for file_encoding in encodings:
         try:
-            with open(file_path, "r", encoding=file_encoding) as f:
-                text = f.read()
-                break
+            text = file_path.read_text(encoding=file_encoding)
+            break
+
         except:
             text = ""
 
@@ -50,7 +50,7 @@ def read_text_file(
         else:
             logger.info(rf"{delimiter}でリスト化しました")
         text = text.split(delimiter)
-        if text[-1] == "":
+        if len(text) and text[-1] == "":
             text = text[:-1]
 
     if return_encoding:
@@ -71,8 +71,6 @@ def write_file(
     """
     ファイルにテキストを書き込む。
 
-    Parameters
-    ----------
     file_path : Union[str, Path]
         書き込み先ファイルのパス
     write_text : str, optional
@@ -86,8 +84,6 @@ def write_file(
         not_dateを入力すると、バックアップファイルに日付が記載されなくなる。
 
     Returns
-    -------
-    None
     """
     file_path = Path(file_path)
     write_text = str(write_text)
@@ -111,12 +107,12 @@ def write_file(
 
     if write_mode == "a" and file_path.exists():
         write_text = read_text_file(file_path) + write_text
-        write_mode == "w"
+        write_mode = "w"
+    elif write_mode != "w":
+        logger.warning(f"{write_mode}を使用するみたいです")
 
     # ファイルを開いて書き込む
-    with open(make_directory(file_path), write_mode, encoding=file_encoding) as f:
-        f.write(write_text)
-
+    make_directory(file_path).write_text(write_text, encoding=file_encoding)
     logger.debug(f"{file_path}にテキストファイルを保存しました")
 
 
