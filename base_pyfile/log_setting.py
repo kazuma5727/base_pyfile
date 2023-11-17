@@ -90,7 +90,7 @@ def make_logger(
         level = handler.level
 
     else:
-        logger.addHandler(get_log_handler(level, log_folder))
+        logger.addHandler(get_log_handler(level, log_folder=log_folder))
 
     # レベルを設定
     logger.setLevel(level)
