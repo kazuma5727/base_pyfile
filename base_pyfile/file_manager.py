@@ -100,9 +100,9 @@ def write_file(
     if back_up_mode and file_path.exists():
         file = read_text_file(file_path)
         if file == write_text:
-            logger.info("既に書き込み先には同一ファイルが存在しています。")
+            logger.info(f"書き込み先には同一ファイル({file_path})が存在しています。")
         else:
-            logger.info("既に書き込み先にはファイルが存在しています。バックアップを作成して上書き保存をします")
+            logger.info(f"書き込み先には同一ファイル({file_path})が存在しています。バックアップを作成して上書き保存をします")
             backup_file(file_path, back_up_mode)
 
     if write_mode == "a" and file_path.exists():
