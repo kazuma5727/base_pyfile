@@ -1,3 +1,9 @@
+from base_pyfile.automation_tools import (
+    learning_materials,
+    move_and_click,
+    specified_color,
+    templates_matching,
+)
 from base_pyfile.file_manager import read_text_file, write_file
 from base_pyfile.function_timer import logger_timer, timer
 from base_pyfile.log_setting import get_log_handler, make_logger
@@ -16,6 +22,10 @@ from base_pyfile.path_manager import (
 # from base_pyfile.scraping import download_image
 
 __all__ = [
+    "learning_materials",
+    "move_and_click",
+    "specified_color",
+    "templates_matching",
     "read_text_file",
     "write_file",
     "logger_timer",
@@ -29,8 +39,7 @@ __all__ = [
     "get_folders_and_files",
     "get_latest_folder",
     "make_directory",
-    "sanitize_windows_filename"
-    "unique_path",
+    "sanitize_windows_filename" "unique_path",
 ]
 # パッケージ内のモジュール数を数える
 num_modules = len(__all__)
