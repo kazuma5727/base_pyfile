@@ -2,3 +2,5 @@ natsort
 BeautifulSoup4
 ruamel.yaml
 tqdm
+pyautogui
+opencv-python

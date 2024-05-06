@@ -14,6 +14,7 @@ from kivy.lang import Builder
 from kivy.properties import BooleanProperty, NumericProperty, StringProperty
 from kivy.resources import resource_add_path
 from kivy.uix.widget import Widget
+from kivy.graphics.texture import Texture
 
 from base_pyfile import (
     get_all_files,
@@ -168,6 +169,13 @@ class ImageWidget(Widget):
         texture.blit_buffer(buf, colorfmt="bgr", bufferfmt="ubyte")
         # インスタンスのtextureを変更
         self.ids.camera.texture = texture
+
+
+    def update_progress(self, iterable):
+        for e, item in enumerate(iterable, 1):
+            self.progress_value = e
+            self.progress_max = len(iterable)
+            yield item
 
 
 class KivyAPP(App):

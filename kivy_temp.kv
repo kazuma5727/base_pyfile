@@ -25,7 +25,8 @@
                     size_hint_y: 0.8
 
                 BoxLayout:
-
+                    padding: 10
+                    spacing: 10
                     size_hint_y: 0.2
                     Button:
                         id: back_image
@@ -59,6 +60,11 @@
                             color: 0,0,0,1
                             active: root.on_off
 
+            ProgressBar:
+                size_hint_y: 0.1
+                font_size: 50
+                value: 100
+                max: 100
 
         #             Switch:
         #                 id: Auto_swich
