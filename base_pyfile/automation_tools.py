@@ -100,7 +100,7 @@ def move_and_click(
     pyautogui.click(x, y)
 
 
-def specified_color_click(
+def specified_color(
     R: int,
     G: int,
     B: int,
@@ -108,22 +108,25 @@ def specified_color_click(
     exclude_radius: int = 70,
     min_size: int = 100,
     save: str = "",
+    bottom: bool = False
 ) -> tuple[int, int]:
     """
     指定された色が含まれる画像上のランダムな位置をクリックします。
 
     Args:
-        R (int): 色の赤成分（0から255の整数）。
-        G (int): 色の緑成分（0から255の整数）。
-        B (int): 色の青成分（0から255の整数）。
+        R (int): 色の赤成分（0から255の整数）
+        G (int): 色の緑成分（0から255の整数）
+        B (int): 色の青成分（0から255の整数）
         image (str, optional): 入力画像のファイルパス。デフォルトは空文字列。
         exclude_radius (int, optional): マウスカーソル周辺の除外半径。デフォルトは70。
         min_size (int, optional): 色の塊として認識する最小サイズ。デフォルトは100。
         save (str, optional): 抽出された色の塊の保存先フォルダのパス。デフォルトは空文字列。
+        bottom (bool, optional): 最下部の塊からランダムにクリックするかどうか。デフォルトはFalse。
 
     Returns:
         tuple[int, int]: クリックする座標 (x, y) のタプル。
     """
+
     # 目標色をnumpy配列に変換
     target_color = np.array([R, G, B], dtype=np.uint8)
 
@@ -182,8 +185,21 @@ def specified_color_click(
             result,
         )
 
-    x = cols[np.random.randint(0, len(cols))]
-    y = rows[np.random.randint(0, len(rows))]
+    if not len(cols):
+        logger.error("not found")
+        return pyautogui.position()
+
+    if bottom:
+        bottom_row = np.max(rows)
+        bottom_row_indices = np.where(rows == bottom_row)
+        Ransom = np.random.randint(0, len(bottom_row_indices))
+        bottom_row_indices[Ransom]
+        bottom_cols = cols[bottom_row_indices][0]
+        x = bottom_cols[np.random.randint(0, len(bottom_cols))]
+        y = bottom_row
+    else:
+        x = cols[np.random.randint(0, len(cols))]
+        y = rows[np.random.randint(0, len(rows))]
     return x, y
 
 
