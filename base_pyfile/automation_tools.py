@@ -19,7 +19,12 @@ logger.addHandler(NullHandler())
 
 
 def learning_materials(
-    x: int, y: int, width: int = 200, height: int = 100, classes: int = 0
+    x: int,
+    y: int,
+    width: int = 200,
+    height: int = 100,
+    classes: int = 0,
+    probability: int = 1000,
 ) -> tuple[int, int]:
     """
     学習用の素材の生成。
@@ -30,25 +35,26 @@ def learning_materials(
         width (int, optional): バウンディングボックスの幅。デフォルトは200。
         height (int, optional): バウンディングボックスの高さ。デフォルトは100。
         classes (int, optional): クラスラベル。デフォルトは0。
+        probability (int): 1/probabilityの割合で画像を保存。デフォルトは1000。
 
     Returns:
         tuple[int, int]: バウンディングボックスの中心座標 (x, y) のタプル。
     """
     # バウンディングボックスの中心座標を取得
-    image = cv2.cvtColor(np.array(pyautogui.screenshot()), cv2.COLOR_RGB2BGR)
-    w, h = image.shape[1], image.shape[0]
-    text = "{classes} {:7f} {:7f} {:7f} {:7f}\n".format(
-        classes,
-        x / w,
-        y / h,
-        width / w,
-        height / h,
-    )
-
-    learn = unique_path("learn\materials_{}.png")
-    cv2.imwrite(str(learn), image)
-    # 拡張子をpngから、txtに変更
-    write_file(learn.with_suffix(".txt"), text)
+    if np.random.randint(1, probability + 1) == 1:
+        image = cv2.cvtColor(np.array(pyautogui.screenshot()), cv2.COLOR_RGB2BGR)
+        w, h = image.shape[1], image.shape[0]
+        text = "{classes} {:7f} {:7f} {:7f} {:7f}\n".format(
+            classes,
+            x / w,
+            y / h,
+            width / w,
+            height / h,
+        )
+        learn = unique_path("learn\materials_{}.png")
+        cv2.imwrite(str(learn), image)
+        # 拡張子をpngから、txtに変更
+        write_file(learn.with_suffix(".txt"), text)
 
     return x, y
 
@@ -59,7 +65,7 @@ def move_and_click(
     x_error: int = 0,
     y_error: int = 0,
     t: float = None,
-    learning_mode=False,
+    learning_probability=0,
 ) -> None:
     """
     マウスを指定された位置に移動してクリックします。
@@ -70,6 +76,7 @@ def move_and_click(
         x_error (int, optional): X軸の誤差。デフォルトは0。
         y_error (int, optional): Y軸の誤差。デフォルトは0。
         t (float, optional): 移動にかかる時間。Noneの場合、自動的に計算されます。デフォルトはNone。
+        learning_probability (int): 1/learning_probabilityの割合で画像を保存。デフォルトは0。
 
     Returns:
         None
@@ -80,7 +87,6 @@ def move_and_click(
 
     # 現在のマウス位置を取得
     x2, y2 = pyautogui.position()
-
     # 移動距離を計算
     distance = int(np.sqrt((x2 - x) ** 2 + (y2 - y) ** 2))
 
@@ -94,8 +100,8 @@ def move_and_click(
 
     # マウスを指定された位置に移動し、クリックする
     pyautogui.moveTo(x, y, duration=t)
-    if learning_mode:
-        learning_materials(x, y)
+    if learning_probability:
+        learning_materials(x_position, y_position, probability=learning_probability)
 
     pyautogui.click(x, y)
 
@@ -107,8 +113,8 @@ def specified_color(
     image: str = "",
     exclude_radius: int = 70,
     min_size: int = 100,
+    bottom: bool = False,
     save: str = "",
-    bottom: bool = False
 ) -> tuple[int, int]:
     """
     指定された色が含まれる画像上のランダムな位置をクリックします。
@@ -120,15 +126,15 @@ def specified_color(
         image (str, optional): 入力画像のファイルパス。デフォルトは空文字列。
         exclude_radius (int, optional): マウスカーソル周辺の除外半径。デフォルトは70。
         min_size (int, optional): 色の塊として認識する最小サイズ。デフォルトは100。
-        save (str, optional): 抽出された色の塊の保存先フォルダのパス。デフォルトは空文字列。
         bottom (bool, optional): 最下部の塊からランダムにクリックするかどうか。デフォルトはFalse。
+        save (str, optional): 抽出された色の塊の保存先フォルダのパス。デフォルトは空文字列。
 
     Returns:
         tuple[int, int]: クリックする座標 (x, y) のタプル。
     """
 
     # 目標色をnumpy配列に変換
-    target_color = np.array([R, G, B], dtype=np.uint8)
+    target_color = np.array([B, G, R], dtype=np.uint8)
 
     # 画像読み込み
     if not image:
@@ -228,10 +234,64 @@ def templates_matching(
     return x, y
 
 
+def full_templatematching(
+    templates,
+    image=cv2.cvtColor(np.array(pyautogui.screenshot()), cv2.COLOR_RGB2BGR),
+):
+    if isinstance(templates, str):
+        obj = cv2.imread(templates)
+
+    elif isinstance(templates, np.ndarray):
+        obj = templates
+        
+
+
+    # テンプレートマッチングを実行
+    result = cv2.matchTemplate(image, obj, cv2.TM_CCOEFF_NORMED)
+
+    # 類似度の閾値を設定
+    threshold = 0.8
+
+    # 一致箇所を取得
+    loc = np.where(result >= threshold)
+
+    # 重複を防ぐためのリストを初期化
+    unique_loc = []
+    xy_list = []
+
+    # 一致箇所を元画像にマーキング
+    for pt in zip(*loc[::-1]):
+        # 重複チェック
+        is_unique = True
+        for existing_pt in unique_loc:
+            if (
+                abs(existing_pt[0] - pt[0]) < obj.shape[1]
+                and abs(existing_pt[1] - pt[1]) < obj.shape[0]
+            ):
+                is_unique = False
+                break
+        if is_unique:
+            pyautogui.keyDown("ctrl")
+            cv2.rectangle(
+                image,
+                pt,
+                (pt[0] + obj.shape[1], pt[1] + obj.shape[0]),
+                (0, 255, 0),
+                2,
+            )
+            unique_loc.append(pt)
+            # 中央値の座標を計算して出力
+            x = pt[0] + obj.shape[1] // 2
+            y = pt[1] + obj.shape[0] // 2
+            xy_list.append([x, y])
+
+    return xy_list
+
+
 if __name__ == "__main__":
     logger = make_logger(handler=get_log_handler(10))
 
     move_and_click(1000, 500)
     gold_color = np.array([105, 253, 192], dtype=np.uint8)
     normal_color = np.array([213, 212, 142], dtype=np.uint8)
-    xx, yy = specified_color_click(gold_color)
+    xx, yy = specified_color(gold_color)
