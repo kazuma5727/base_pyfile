@@ -1,4 +1,5 @@
 from base_pyfile.automation_tools import (
+    full_templatematching,
     learning_materials,
     move_and_click,
     specified_color,
@@ -22,6 +23,7 @@ from base_pyfile.path_manager import (
 # from base_pyfile.scraping import download_image
 
 __all__ = [
+    "full_templatematching",
     "learning_materials",
     "move_and_click",
     "specified_color",
