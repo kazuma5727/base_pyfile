@@ -2,6 +2,7 @@ import os
 import sys
 from logging import NullHandler, getLogger
 from pathlib import Path
+from typing import Any
 
 import cv2
 import numpy as np
@@ -106,11 +107,39 @@ def move_and_click(
     pyautogui.click(x, y)
 
 
+def image_cut(
+    image: Any, start_col: int, end_col: int, start_row: int, end_row: int
+) -> Any:
+    """
+    画像の一部を切り取る関数。
+
+    Args:
+        image (Any): 切り取る対象の画像。NumPy配列として表現されることが想定される。
+        start_col (int): 切り取りの開始列のインデックス。
+        end_col (int): 切り取りの終了列のインデックス。
+        start_row (int): 切り取りの開始行のインデックス。
+        end_row (int): 切り取りの終了行のインデックス。
+
+    Returns:
+        Any: 指定された領域が切り取られた部分の画像。
+
+    Example:
+        >>> image = np.array([[1, 2, 3],
+        ...                    [4, 5, 6],
+        ...                    [7, 8, 9]])
+        >>> image_cut(image, 0, 2, 0, 2)
+        array([[1, 2],
+               [4, 5]])
+    """
+    return image[start_row:end_row, start_col:end_col]
+
+
 def specified_color(
     R: int,
     G: int,
     B: int,
     image: str = "",
+    left_right_upper_Lower: tuple = (),
     exclude_radius: int = 70,
     min_size: int = 100,
     bottom: bool = False,
@@ -124,6 +153,7 @@ def specified_color(
         G (int): 色の緑成分（0から255の整数）
         B (int): 色の青成分（0から255の整数）
         image (str, optional): 入力画像のファイルパス。デフォルトは空文字列。
+        left_right_upper_lower (tuple, optional): 画像の切り取り範囲 (start_col, end_col, start_row, end_row)。デフォルトは空のタプル。
         exclude_radius (int, optional): マウスカーソル周辺の除外半径。デフォルトは70。
         min_size (int, optional): 色の塊として認識する最小サイズ。デフォルトは100。
         bottom (bool, optional): 最下部の塊からランダムにクリックするかどうか。デフォルトはFalse。
@@ -132,8 +162,7 @@ def specified_color(
     Returns:
         tuple[int, int]: クリックする座標 (x, y) のタプル。
     """
-
-    # 目標色をnumpy配列に変換
+    # 目標色をNumPy配列に変換
     target_color = np.array([B, G, R], dtype=np.uint8)
 
     # 画像読み込み
@@ -141,6 +170,14 @@ def specified_color(
         image = cv2.cvtColor(np.array(pyautogui.screenshot()), cv2.COLOR_RGB2BGR)
     elif isinstance(image, str):
         image = cv2.imread(image)
+
+    if left_right_upper_Lower:
+        image = image_cut(image=image, *left_right_upper_Lower)
+        plus_x = left_right_upper_Lower[2]
+        plus_y = left_right_upper_Lower[0]
+    else:
+        plus_x = 0
+        plus_y = 0
 
     # 画像と目標色との距離を計算
     dist = np.linalg.norm(image - target_color, axis=2)
@@ -193,7 +230,8 @@ def specified_color(
 
     if not len(cols):
         logger.error("not found")
-        return pyautogui.position()
+        x, y = pyautogui.position()
+        return x + plus_x, y + plus_y
 
     if bottom:
         bottom_row = np.max(rows)
@@ -206,7 +244,7 @@ def specified_color(
     else:
         x = cols[np.random.randint(0, len(cols))]
         y = rows[np.random.randint(0, len(rows))]
-    return x, y
+    return x + plus_x, y + plus_y
 
 
 def templates_matching(
@@ -237,20 +275,16 @@ def templates_matching(
 def full_templatematching(
     templates,
     image=cv2.cvtColor(np.array(pyautogui.screenshot()), cv2.COLOR_RGB2BGR),
+    threshold=0.8,
 ):
     if isinstance(templates, str):
         obj = cv2.imread(templates)
 
     elif isinstance(templates, np.ndarray):
         obj = templates
-        
-
 
     # テンプレートマッチングを実行
     result = cv2.matchTemplate(image, obj, cv2.TM_CCOEFF_NORMED)
-
-    # 類似度の閾値を設定
-    threshold = 0.8
 
     # 一致箇所を取得
     loc = np.where(result >= threshold)
