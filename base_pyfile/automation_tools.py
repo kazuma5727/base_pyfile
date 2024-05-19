@@ -172,9 +172,9 @@ def specified_color(
         image = cv2.imread(image)
 
     if left_right_upper_Lower:
-        image = image_cut(image=image, *left_right_upper_Lower)
-        plus_x = left_right_upper_Lower[2]
-        plus_y = left_right_upper_Lower[0]
+        image = image_cut(image, *left_right_upper_Lower)
+        plus_x = left_right_upper_Lower[0]
+        plus_y = left_right_upper_Lower[2]
     else:
         plus_x = 0
         plus_y = 0
@@ -231,7 +231,7 @@ def specified_color(
     if not len(cols):
         logger.error("not found")
         x, y = pyautogui.position()
-        return x + plus_x, y + plus_y
+        return x, y 
 
     if bottom:
         bottom_row = np.max(rows)
