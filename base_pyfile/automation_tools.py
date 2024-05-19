@@ -237,8 +237,7 @@ def specified_color(
         bottom_row = np.max(rows)
         bottom_row_indices = np.where(rows == bottom_row)
         Ransom = np.random.randint(0, len(bottom_row_indices))
-        bottom_row_indices[Ransom]
-        bottom_cols = cols[bottom_row_indices][0]
+        bottom_cols = cols[bottom_row_indices[Ransom]][0]
         x = bottom_cols[np.random.randint(0, len(bottom_cols))]
         y = bottom_row
     else:
