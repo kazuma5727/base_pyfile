@@ -246,6 +246,60 @@ def specified_color(
     return x + plus_x, y + plus_y
 
 
+
+
+
+def specified_labelcolor();
+    # スクリーンショットを撮影し、BGR形式に変換
+    image = cv2.cvtColor(np.array(pyautogui.screenshot()), cv2.COLOR_RGB2BGR)
+
+    # 目標とするRGB値
+    target_color = np.array([13, 46, 165], dtype=np.uint8)
+
+    # RGB値と画像の各ピクセルとの距離を計算
+    dist = np.linalg.norm(image - target_color, axis=2)
+
+    # 一定距離以下のピクセルをマスク
+    threshold = 30  # 適宜調整
+    mask = dist < threshold
+
+    # マスクを使用して元の画像から特定の色を抽出
+    result = cv2.bitwise_and(image, image, mask=mask.astype(np.uint8))
+
+    # マスクを使用して抽出された領域を白で塗りつぶし、ラベリングを実施
+    _, binary_mask = cv2.threshold(mask.astype(np.uint8), 0, 255, cv2.THRESH_BINARY)
+    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(binary_mask)
+
+    # 各ラベルの情報を表示
+    for i in range(1, num_labels):  # ラベル0は背景なので無視
+        x = stats[i, cv2.CC_STAT_LEFT]
+        y = stats[i, cv2.CC_STAT_TOP]
+        w = stats[i, cv2.CC_STAT_WIDTH]
+        h = stats[i, cv2.CC_STAT_HEIGHT]
+        area = stats[i, cv2.CC_STAT_AREA]
+        centroid = centroids[i]
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 def templates_matching(
     templates,
     image=cv2.cvtColor(np.array(pyautogui.screenshot()), cv2.COLOR_RGB2BGR),
