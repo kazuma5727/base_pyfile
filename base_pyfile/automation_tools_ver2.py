@@ -156,6 +156,7 @@ def specified_color(
     image: str = "",
     left_right_upper_Lower: tuple = (),
     label_count=0,
+    threshold=3,  # 適宜調整
     exclude_radius: int = 70,
     min_size: int = 100,
     bottom: bool = False,
@@ -184,7 +185,6 @@ def specified_color(
     dist = np.linalg.norm(image - target_color, axis=2)
 
     # 一定距離以下のピクセルをマスク
-    threshold = 3  # 適宜調整
     mask = dist < threshold
 
     # マウスカーソル周辺の座標を除外
@@ -238,7 +238,7 @@ def specified_color(
             return x, y
 
     if label_count:
-        logger.info(f"label:{label_count}")
+        logger.debug(f"label:{label_count} label数: {num_labels}")
         xy_list = []
         # 各連結成分のエリアとラベルをリストに格納
         areas_and_labels = [
@@ -246,18 +246,19 @@ def specified_color(
         ]  # ラベル0は背景なので無視
 
         for idx, (area, label) in enumerate(areas_and_labels):
-            if idx >= label_count:  
+            if idx >= label_count:
                 break
             x = stats[label, cv2.CC_STAT_LEFT]
             y = stats[label, cv2.CC_STAT_TOP]
             w = stats[label, cv2.CC_STAT_WIDTH]
             h = stats[label, cv2.CC_STAT_HEIGHT]
+
+            logger.info(f"  座標 (x, y) = ({x + w / 2 + plus_x}, {y + h / 2 + plus_y})")
+            logger.info(f"  幅 = {w}, 高さ = {h}, 面積 = {area}")
             xy_list.append([x + w / 2 + plus_x, y + h / 2 + plus_y])
-            
+
         return xy_list
-            
-            
-            
+
     if bottom:
         bottom_row = np.max(rows)
         bottom_row_indices = np.where(rows == bottom_row)
