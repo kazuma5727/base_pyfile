@@ -132,19 +132,6 @@ def image_cut(
                [4, 5]])
     """
     return image[start_row:end_row, start_col:end_col]
-
-
-def specified_color(
-    R: int,
-    G: int,
-    B: int,
-    image: str = "",
-    left_right_upper_Lower: tuple = (),
-    exclude_radius: int = 70,
-    min_size: int = 100,
-    bottom: bool = False,
-    save: str = "",
-) -> tuple[int, int]:
     """
     指定された色が含まれる画像上のランダムな位置をクリックします。
 
@@ -162,6 +149,21 @@ def specified_color(
     Returns:
         tuple[int, int]: クリックする座標 (x, y) のタプル。
     """
+
+
+def specified_color(
+    RGB: tuple,
+    image: str = "",
+    left_right_upper_Lower: tuple = (),
+    label_count=0,
+    threshold=3,  # 適宜調整
+    exclude_radius: int = 70,
+    min_size: int = 100,
+    bottom: bool = False,
+    save: str = "",
+) -> tuple[int, int]:
+
+    R, G, B = RGB
     # 目標色をNumPy配列に変換
     target_color = np.array([B, G, R], dtype=np.uint8)
 
@@ -183,7 +185,6 @@ def specified_color(
     dist = np.linalg.norm(image - target_color, axis=2)
 
     # 一定距離以下のピクセルをマスク
-    threshold = 3  # 適宜調整
     mask = dist < threshold
 
     # マウスカーソル周辺の座標を除外
@@ -206,7 +207,7 @@ def specified_color(
     ret, thresh = cv2.threshold(gray, 1, 255, cv2.THRESH_BINARY)
 
     # 連結成分のラベリング
-    _, labels, stats, centroids = cv2.connectedComponentsWithStats(
+    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(
         thresh, connectivity=8
     )
 
@@ -231,7 +232,32 @@ def specified_color(
     if not len(cols):
         logger.error("not found")
         x, y = pyautogui.position()
-        return x, y 
+        if label_count:
+            return [(x, y)]
+        else:
+            return x, y
+
+    if label_count:
+        logger.debug(f"label:{label_count} label数: {num_labels}")
+        xy_list = []
+        # 各連結成分のエリアとラベルをリストに格納
+        areas_and_labels = [
+            (stats[i, cv2.CC_STAT_AREA], i) for i in range(1, num_labels)
+        ]  # ラベル0は背景なので無視
+
+        for idx, (area, label) in enumerate(areas_and_labels):
+            if idx >= label_count:
+                break
+            x = stats[label, cv2.CC_STAT_LEFT]
+            y = stats[label, cv2.CC_STAT_TOP]
+            w = stats[label, cv2.CC_STAT_WIDTH]
+            h = stats[label, cv2.CC_STAT_HEIGHT]
+
+            logger.info(f"  座標 (x, y) = ({x + w / 2 + plus_x}, {y + h / 2 + plus_y})")
+            logger.info(f"  幅 = {w}, 高さ = {h}, 面積 = {area}")
+            xy_list.append([x + w / 2 + plus_x, y + h / 2 + plus_y])
+
+        return xy_list
 
     if bottom:
         bottom_row = np.max(rows)
@@ -246,10 +272,7 @@ def specified_color(
     return x + plus_x, y + plus_y
 
 
-
-
-
-def specified_labelcolor();
+def specified_labelcolor():
     # スクリーンショットを撮影し、BGR形式に変換
     image = cv2.cvtColor(np.array(pyautogui.screenshot()), cv2.COLOR_RGB2BGR)
 
@@ -278,26 +301,6 @@ def specified_labelcolor();
         h = stats[i, cv2.CC_STAT_HEIGHT]
         area = stats[i, cv2.CC_STAT_AREA]
         centroid = centroids[i]
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 def templates_matching(
