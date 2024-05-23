@@ -86,13 +86,13 @@ def move_and_click(
     x = np.random.randint(x_position - x_error, x_position + 1 + x_error)
     y = np.random.randint(y_position - y_error, y_position + 1 + y_error)
 
-    # 現在のマウス位置を取得
-    x2, y2 = pyautogui.position()
-    # 移動距離を計算
-    distance = int(np.sqrt((x2 - x) ** 2 + (y2 - y) ** 2))
-
     # 時間が指定されていない場合、自動で計算
     if t is None:
+        # 現在のマウス位置を取得
+        x2, y2 = pyautogui.position()
+        # 移動距離を計算
+        distance = int(np.sqrt((x2 - x) ** 2 + (y2 - y) ** 2))
+
         t = distance / 800
         if t > 0.5:
             t = 0.35
@@ -152,18 +152,35 @@ def image_cut(
 
 
 def specified_color(
-    RGB: tuple,
+    RGB: tuple[int, int, int],
     image: str = "",
-    left_right_upper_Lower: tuple = (),
-    label_count=0,
-    near_label: tuple = (),
+    left_right_upper_Lower: tuple[int, int, int, int] = (),
+    label_count: int = 0,
+    near_label: tuple[int, int] = (),
     bottom: bool = False,
-    threshold=3,  # 適宜調整
+    threshold: int = 3,  # 適宜調整
     exclude_radius: int = 70,
     min_size: int = 100,
     save: str = "",
 ) -> tuple[int, int]:
+    """
+    指定した色を画像内で検出し、その位置を返します。
 
+    Args:
+        RGB (tuple[int, int, int]): 検出する色のRGB値。
+        image (str): 読み込む画像のパス。省略時はスクリーンショットを使用。
+        left_right_upper_Lower (tuple[int, int, int, int]): 画像の一部を切り抜く範囲。
+        label_count (int): 検出するラベルの数。
+        near_label (tuple[int, int]): 指定した座標に最も近いラベルを取得。
+        bottom (bool): 最も下にあるピクセルを取得するかどうか。
+        threshold (int): 色の距離の閾値。
+        exclude_radius (int): マウスカーソル周辺の除外半径。
+        min_size (int): 検出する最小サイズ。
+        save (str): マスク画像の保存先パス。
+
+    Returns:
+        tuple[int, int]: 検出された色の位置。
+    """
     R, G, B = RGB
     # 目標色をNumPy配列に変換
     target_color = np.array([B, G, R], dtype=np.uint8)
@@ -174,6 +191,7 @@ def specified_color(
     elif isinstance(image, str):
         image = cv2.imread(image)
 
+    # 画像の一部を切り抜く
     if left_right_upper_Lower:
         image = image_cut(image, *left_right_upper_Lower)
         plus_x = left_right_upper_Lower[0]
@@ -252,9 +270,11 @@ def specified_color(
             w = stats[label, cv2.CC_STAT_WIDTH]
             h = stats[label, cv2.CC_STAT_HEIGHT]
 
-            logger.info(f"  座標 (x, y) = ({x + w / 2 + plus_x}, {y + h / 2 + plus_y})")
+            logger.info(
+                f"  座標 (x, y) = ({x + w // 2 + plus_x}, {y + h // 2 + plus_y})"
+            )
             logger.info(f"  幅 = {w}, 高さ = {h}, 面積 = {area}")
-            xy_list.append([x + w / 2 + plus_x, y + h / 2 + plus_y])
+            xy_list.append([x + w // 2 + plus_x, y + h // 2 + plus_y])
         if label_count == 1:
             return xy_list[0]
         else:
@@ -307,12 +327,24 @@ def specified_color(
 
 
 def templates_matching(
-    templates,
-    image=cv2.cvtColor(np.array(pyautogui.screenshot()), cv2.COLOR_RGB2BGR),
-):
+    templates: str | np.ndarray,
+    image: np.ndarray = cv2.cvtColor(
+        np.array(pyautogui.screenshot()), cv2.COLOR_RGB2BGR
+    ),
+) -> tuple[int, int]:
+    """
+    テンプレートマッチングを用いて画像内のテンプレートの位置を検出します。
+
+    Args:
+        templates (str | np.ndarray): テンプレート画像のパスまたはテンプレート画像。
+        image (np.ndarray): 検出対象の画像。省略時はスクリーンショットを使用。
+
+    Returns:
+        tuple[int, int]: 検出されたテンプレートの中心位置。
+    """
+
     if isinstance(templates, str):
         obj = cv2.imread(templates)
-
     elif isinstance(templates, np.ndarray):
         obj = templates
 
@@ -324,7 +356,6 @@ def templates_matching(
     if max_val > 0.4:
         x = int(max_loc[0] + obj.shape[1] / 2)
         y = int(max_loc[1] + obj.shape[0] / 2)
-
     else:
         logger.error("not found")
         return pyautogui.position()
@@ -332,10 +363,23 @@ def templates_matching(
 
 
 def full_templatematching(
-    templates,
-    image=cv2.cvtColor(np.array(pyautogui.screenshot()), cv2.COLOR_RGB2BGR),
-    threshold=0.8,
-):
+    templates: str | np.ndarray,
+    image: np.ndarray = cv2.cvtColor(
+        np.array(pyautogui.screenshot()), cv2.COLOR_RGB2BGR
+    ),
+    threshold: float = 0.8,
+) -> list[list[int]]:
+    """
+    テンプレートマッチングを用いて画像内のテンプレートの全ての位置を検出します。
+
+    Args:
+        templates (str | np.ndarray): テンプレート画像のパスまたはテンプレート画像。
+        image (np.ndarray): 検出対象の画像。省略時はスクリーンショットを使用。
+        threshold (float): マッチングの閾値。これ以上の値を持つ場所を一致箇所とする。
+
+    Returns:
+        list[list[int]]: 検出されたテンプレートの中心位置のリスト。
+    """
     if isinstance(templates, str):
         obj = cv2.imread(templates)
 
