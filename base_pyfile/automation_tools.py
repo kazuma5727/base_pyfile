@@ -156,10 +156,11 @@ def specified_color(
     image: str = "",
     left_right_upper_Lower: tuple = (),
     label_count=0,
+    near_label: tuple = (),
+    bottom: bool = False,
     threshold=3,  # 適宜調整
     exclude_radius: int = 70,
     min_size: int = 100,
-    bottom: bool = False,
     save: str = "",
 ) -> tuple[int, int]:
 
@@ -210,7 +211,6 @@ def specified_color(
     num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(
         thresh, connectivity=8
     )
-
     # 面積が最小サイズ未満の塊を削除
     for i, stat in enumerate(stats):
         if stat[4] < min_size:
@@ -220,7 +220,6 @@ def specified_color(
     result = np.zeros_like(detected_color)
     result[labels != 0] = detected_color[labels != 0]
 
-    # クリック位置をランダムに選択
     dist = np.linalg.norm(result - target_color, axis=2)
     rows, cols = np.where(dist < threshold)
     if save:
@@ -232,7 +231,7 @@ def specified_color(
     if not len(cols):
         logger.error("not found")
         x, y = pyautogui.position()
-        if label_count:
+        if label_count > 1:
             return [(x, y)]
         else:
             return x, y
@@ -256,8 +255,43 @@ def specified_color(
             logger.info(f"  座標 (x, y) = ({x + w / 2 + plus_x}, {y + h / 2 + plus_y})")
             logger.info(f"  幅 = {w}, 高さ = {h}, 面積 = {area}")
             xy_list.append([x + w / 2 + plus_x, y + h / 2 + plus_y])
+        if label_count == 1:
+            return xy_list[0]
+        else:
+            return xy_list
 
-        return xy_list
+    if near_label:
+        target_coord = pyautogui.position()
+        # 指定した座標に最も近いラベルを取得
+        min_distance = float("inf")
+        closest_label = None
+        for i in range(1, num_labels):
+            center = centroids[i]
+            distance = np.linalg.norm(np.array(target_coord) - center)
+            if distance < min_distance:
+                min_distance = distance
+                closest_label = i
+
+        # 最も近いラベルの領域のみを残し、それ以外を黒く塗りつぶす
+        result = np.zeros_like(result)
+        if closest_label is not None:
+            result[labels == closest_label] = result[labels == closest_label]
+            x = stats[closest_label, cv2.CC_STAT_LEFT]
+            y = stats[closest_label, cv2.CC_STAT_TOP]
+            width = stats[closest_label, cv2.CC_STAT_WIDTH]
+            height = stats[closest_label, cv2.CC_STAT_HEIGHT]
+            center_x = x + width // 2
+            center_y = y + height // 2
+
+            logger.debug(f"中央座標: ({center_x}, {center_y})")
+            logger.debug(f"幅: {width}")
+            logger.debug(f"高さ: {height}")
+        else:
+            logger.debug("指定した座標に有効なラベルが見つかりませんでした。")
+        if bottom:
+            return center_x + plus_x, y + height + plus_y
+        else:
+            return center_x + plus_x, center_y + plus_y
 
     if bottom:
         bottom_row = np.max(rows)
@@ -270,37 +304,6 @@ def specified_color(
         x = cols[np.random.randint(0, len(cols))]
         y = rows[np.random.randint(0, len(rows))]
     return x + plus_x, y + plus_y
-
-
-def specified_labelcolor():
-    # スクリーンショットを撮影し、BGR形式に変換
-    image = cv2.cvtColor(np.array(pyautogui.screenshot()), cv2.COLOR_RGB2BGR)
-
-    # 目標とするRGB値
-    target_color = np.array([13, 46, 165], dtype=np.uint8)
-
-    # RGB値と画像の各ピクセルとの距離を計算
-    dist = np.linalg.norm(image - target_color, axis=2)
-
-    # 一定距離以下のピクセルをマスク
-    threshold = 30  # 適宜調整
-    mask = dist < threshold
-
-    # マスクを使用して元の画像から特定の色を抽出
-    result = cv2.bitwise_and(image, image, mask=mask.astype(np.uint8))
-
-    # マスクを使用して抽出された領域を白で塗りつぶし、ラベリングを実施
-    _, binary_mask = cv2.threshold(mask.astype(np.uint8), 0, 255, cv2.THRESH_BINARY)
-    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(binary_mask)
-
-    # 各ラベルの情報を表示
-    for i in range(1, num_labels):  # ラベル0は背景なので無視
-        x = stats[i, cv2.CC_STAT_LEFT]
-        y = stats[i, cv2.CC_STAT_TOP]
-        w = stats[i, cv2.CC_STAT_WIDTH]
-        h = stats[i, cv2.CC_STAT_HEIGHT]
-        area = stats[i, cv2.CC_STAT_AREA]
-        centroid = centroids[i]
 
 
 def templates_matching(
