@@ -123,6 +123,7 @@ def move_and_click(
             learning_materials(x_position, y_position, probability=learning_probability)
 
     # 指定位置をクリック
+    logger.debug(f"click({x}, {y})")
     pyautogui.click(x, y)
 
 
@@ -132,7 +133,7 @@ def specified_color(
     B: int = None,
     image: np.ndarray = None,
     left_right_upper_Lower: tuple[int, int, int, int] = (),
-    label_count: int = 0,
+    label_count: int = 1,
     near_label: tuple[int, int] = (),
     bottom: bool = False,
     threshold: int = 3,  # 適宜調整
