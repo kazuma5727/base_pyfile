@@ -83,7 +83,7 @@ def move_and_click(
         None
     """
     # x_positionがタプルの場合、それをxとyに分解
-    if isinstance(x_position, tuple):
+    if isinstance(x_position, tuple) or isinstance(x_position, list):
         x, y = x_position
     else:
         x = x_position
@@ -127,7 +127,9 @@ def move_and_click(
 
 
 def specified_color(
-    RGB: tuple[int, int, int],
+    RGB: tuple[int, int, int] | list[int] | int,
+    G: int = None,
+    B: int = None,
     image: np.ndarray = None,
     left_right_upper_Lower: tuple[int, int, int, int] = (),
     label_count: int = 0,
@@ -142,21 +144,35 @@ def specified_color(
     指定した色を画像内で検出し、その位置を返します。
 
     Args:
-        RGB (tuple[int, int, int]): 検出する色のRGB値。
-        image (str): 読み込む画像のパス。省略時はスクリーンショットを使用。
-        left_right_upper_Lower (tuple[int, int, int, int]): 画像の一部を切り抜く範囲。
-        label_count (int): 検出するラベルの数。
-        near_label (tuple[int, int]): 指定した座標に最も近いラベルを取得。
-        bottom (bool): 最も下にあるピクセルを取得するかどうか。
-        threshold (int): 色の距離の閾値。
-        exclude_radius (int): マウスカーソル周辺の除外半径。
-        min_size (int): 検出する最小サイズ。
-        save (str): マスク画像の保存先パス。
+        RGB (tuple[int, int, int] | list[int] | int): 検出する色のRGB値。
+        G (int, optional): 色の緑成分。RGBがタプルやリストの場合は省略。
+        B (int, optional): 色の青成分。RGBがタプルやリストの場合は省略。
+        image (np.ndarray, optional): 読み込む画像。省略時はスクリーンショットを使用。
+        left_right_upper_Lower (tuple[int, int, int, int], optional): 画像の一部を切り抜く範囲。
+        label_count (int, optional): 検出するラベルの数。
+        near_label (tuple[int, int], optional): 指定した座標に最も近いラベルを取得。
+        bottom (bool, optional): 最も下にあるピクセルを取得するかどうか。
+        threshold (int, optional): 色の距離の閾値。
+        exclude_radius (int, optional): マウスカーソル周辺の除外半径。
+        min_size (int, optional): 検出する最小サイズ。
+        save (str, optional): マスク画像の保存先パス。
 
     Returns:
         tuple[int, int]: 検出された色の位置。
     """
-    R, G, B = RGB
+    # RGB値の処理
+    if isinstance(RGB, tuple) or isinstance(RGB, list):
+        if len(RGB) != 3:
+            raise ValueError("RGBは3つの整数からなるタプルまたはリストでなければなりません。")
+        R, G, B = RGB
+    elif isinstance(RGB, int):
+        if G is None or B is None:
+            raise ValueError("RGBを個別の整数として提供する場合、GとBも指定する必要があります。")
+        R = RGB
+    else:
+        raise ValueError("RGBは、タプル、リスト、または赤成分を表す整数でなければなりません。")
+
+
     # 目標色をNumPy配列に変換
     target_color = np.array([B, G, R], dtype=np.uint8)
 
@@ -239,8 +255,11 @@ def specified_color(
             (stats[i, cv2.CC_STAT_AREA], i) for i in range(1, num_labels)
         ]  # ラベル0は背景なので無視
 
+        # エリアの大きい順にソート
+        areas_and_labels.sort(reverse=True, key=lambda x: x[0])
+
         for idx, (area, label) in enumerate(areas_and_labels):
-            if idx >= label_count:
+            if idx >= label_count or area < min_size:
                 break
             x = stats[label, cv2.CC_STAT_LEFT]
             y = stats[label, cv2.CC_STAT_TOP]
@@ -250,7 +269,7 @@ def specified_color(
             logger.info(
                 f"  座標 (x, y) = ({x + w // 2 + plus_x}, {y + h // 2 + plus_y})"
             )
-            logger.info(f"  幅 = {w}, 高さ = {h}, 面積 = {area}")
+            logger.info(f"幅 = {w}, 高さ = {h}, 面積 = {area}")
             xy_list.append([x + w // 2 + plus_x, y + h // 2 + plus_y])
         if label_count == 1:
             return xy_list[0]
@@ -284,7 +303,7 @@ def specified_color(
             logger.debug(f"幅: {width}")
             logger.debug(f"高さ: {height}")
         else:
-            logger.debug("指定した座標に有効なラベルが見つかりませんでした。")
+            logger.error("指定した座標に有効なラベルが見つかりませんでした。")
         if bottom:
             return center_x + plus_x, y + height + plus_y
         else:
@@ -294,8 +313,8 @@ def specified_color(
         bottom_row = np.max(rows)
         bottom_row_indices = np.where(rows == bottom_row)
         Ransom = np.random.randint(0, len(bottom_row_indices))
-        bottom_cols = cols[bottom_row_indices[Ransom]][0]
-        x = bottom_cols
+        bottom_col = cols[bottom_row_indices[Ransom]][0]
+        x = bottom_col
         y = bottom_row
     else:
         x = cols[np.random.randint(0, len(cols))]
