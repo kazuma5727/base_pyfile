@@ -61,8 +61,8 @@ def learning_materials(
 
 
 def move_and_click(
-    x_position: int,
-    y_position: int,
+    x_position: int | tuple[int, int],
+    y_position: int = None,
     x_error: int = 0,
     y_error: int = 0,
     t: float = None,
@@ -72,8 +72,8 @@ def move_and_click(
     マウスを指定された位置に移動してクリックします。
 
     Args:
-        x_position (int): X軸の目標位置。
-        y_position (int): Y軸の目標位置。
+        x_position (int | tuple[int, int]): X軸の目標位置、または(x, y)のタプル。
+        y_position (int, optional): Y軸の目標位置。x_positionがタプルの場合は無視されます。
         x_error (int, optional): X軸の誤差。デフォルトは0。
         y_error (int, optional): Y軸の誤差。デフォルトは0。
         t (float, optional): 移動にかかる時間。Noneの場合、自動的に計算されます。デフォルトはNone。
@@ -82,9 +82,22 @@ def move_and_click(
     Returns:
         None
     """
-    # ランダムな位置を計算
-    x = np.random.randint(x_position - x_error, x_position + 1 + x_error)
-    y = np.random.randint(y_position - y_error, y_position + 1 + y_error)
+    # x_positionがタプルの場合、それをxとyに分解
+    if isinstance(x_position, tuple):
+        x, y = x_position
+    else:
+        x = x_position
+        y = y_position
+
+    # x_positionがタプルでなく、y_positionが指定されていない場合はエラーを発生
+    if y is None:
+        raise ValueError(
+            "x_positionがタプルでない場合、y_positionを指定する必要があります"
+        )
+
+    # 誤差を考慮してランダムな位置を計算
+    x = np.random.randint(x - x_error, x + 1 + x_error)
+    y = np.random.randint(y - y_error, y + 1 + y_error)
 
     # 時間が指定されていない場合、自動で計算
     if t is None:
@@ -93,6 +106,7 @@ def move_and_click(
         # 移動距離を計算
         distance = int(np.sqrt((x2 - x) ** 2 + (y2 - y) ** 2))
 
+        # 距離に基づいて時間を計算
         t = distance / 800
         if t > 0.5:
             t = 0.35
@@ -102,58 +116,19 @@ def move_and_click(
     # マウスを指定された位置に移動し、クリックする
     pyautogui.moveTo(x, y, duration=t)
     if learning_probability:
-        learning_materials(x_position, y_position, probability=learning_probability)
+        # 学習用の画像を保存する関数を呼び出し
+        if isinstance(x_position, tuple):
+            learning_materials(*x_position, probability=learning_probability)
+        else:
+            learning_materials(x_position, y_position, probability=learning_probability)
 
+    # 指定位置をクリック
     pyautogui.click(x, y)
-
-
-def image_cut(
-    image: Any, start_col: int, end_col: int, start_row: int, end_row: int
-) -> Any:
-    """
-    画像の一部を切り取る関数。
-
-    Args:
-        image (Any): 切り取る対象の画像。NumPy配列として表現されることが想定される。
-        start_col (int): 切り取りの開始列のインデックス。
-        end_col (int): 切り取りの終了列のインデックス。
-        start_row (int): 切り取りの開始行のインデックス。
-        end_row (int): 切り取りの終了行のインデックス。
-
-    Returns:
-        Any: 指定された領域が切り取られた部分の画像。
-
-    Example:
-        >>> image = np.array([[1, 2, 3],
-        ...                    [4, 5, 6],
-        ...                    [7, 8, 9]])
-        >>> image_cut(image, 0, 2, 0, 2)
-        array([[1, 2],
-               [4, 5]])
-    """
-    return image[start_row:end_row, start_col:end_col]
-    """
-    指定された色が含まれる画像上のランダムな位置をクリックします。
-
-    Args:
-        R (int): 色の赤成分（0から255の整数）
-        G (int): 色の緑成分（0から255の整数）
-        B (int): 色の青成分（0から255の整数）
-        image (str, optional): 入力画像のファイルパス。デフォルトは空文字列。
-        left_right_upper_lower (tuple, optional): 画像の切り取り範囲 (start_col, end_col, start_row, end_row)。デフォルトは空のタプル。
-        exclude_radius (int, optional): マウスカーソル周辺の除外半径。デフォルトは70。
-        min_size (int, optional): 色の塊として認識する最小サイズ。デフォルトは100。
-        bottom (bool, optional): 最下部の塊からランダムにクリックするかどうか。デフォルトはFalse。
-        save (str, optional): 抽出された色の塊の保存先フォルダのパス。デフォルトは空文字列。
-
-    Returns:
-        tuple[int, int]: クリックする座標 (x, y) のタプル。
-    """
 
 
 def specified_color(
     RGB: tuple[int, int, int],
-    image: str = "",
+    image: np.ndarray = None,
     left_right_upper_Lower: tuple[int, int, int, int] = (),
     label_count: int = 0,
     near_label: tuple[int, int] = (),
@@ -186,16 +161,18 @@ def specified_color(
     target_color = np.array([B, G, R], dtype=np.uint8)
 
     # 画像読み込み
-    if not image:
+    if image is None:
         image = cv2.cvtColor(np.array(pyautogui.screenshot()), cv2.COLOR_RGB2BGR)
     elif isinstance(image, str):
         image = cv2.imread(image)
 
     # 画像の一部を切り抜く
     if left_right_upper_Lower:
-        image = image_cut(image, *left_right_upper_Lower)
-        plus_x = left_right_upper_Lower[0]
-        plus_y = left_right_upper_Lower[2]
+        start_col, end_col, start_row, end_row = left_right_upper_Lower
+        image = image[start_row:end_row, start_col:end_col]
+        plus_x = start_col
+        plus_y = start_row
+
     else:
         plus_x = 0
         plus_y = 0
@@ -328,25 +305,38 @@ def specified_color(
 
 def templates_matching(
     templates: str | np.ndarray,
-    image: np.ndarray = cv2.cvtColor(
-        np.array(pyautogui.screenshot()), cv2.COLOR_RGB2BGR
-    ),
+    image: np.ndarray = None,
+    left_right_upper_Lower: tuple = (),
 ) -> tuple[int, int]:
     """
     テンプレートマッチングを用いて画像内のテンプレートの位置を検出します。
 
     Args:
         templates (str | np.ndarray): テンプレート画像のパスまたはテンプレート画像。
-        image (np.ndarray): 検出対象の画像。省略時はスクリーンショットを使用。
+        image (np.ndarray, optional): 検出対象の画像。省略時はスクリーンショットを使用。
+        left_right_upper_Lower (tuple, optional): 画像の切り取り範囲 (start_col, end_col, start_row, end_row)。デフォルトは空のタプル。
 
     Returns:
         tuple[int, int]: 検出されたテンプレートの中心位置。
     """
+    if image is None:
+        image = cv2.cvtColor(np.array(pyautogui.screenshot()), cv2.COLOR_RGB2BGR)
 
     if isinstance(templates, str):
         obj = cv2.imread(templates)
     elif isinstance(templates, np.ndarray):
         obj = templates
+    else:
+        raise ValueError("Invalid template type. Must be a file path or a NumPy array.")
+
+    if left_right_upper_Lower:
+        start_col, end_col, start_row, end_row = left_right_upper_Lower
+        image = image[start_row:end_row, start_col:end_col]
+        plus_x = start_col
+        plus_y = start_row
+    else:
+        plus_x = 0
+        plus_y = 0
 
     # テンプレートマッチングアルゴリズム
     map_cc = cv2.matchTemplate(image, obj, cv2.TM_CCOEFF_NORMED)
@@ -354,8 +344,8 @@ def templates_matching(
     min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(map_cc)
 
     if max_val > 0.4:
-        x = int(max_loc[0] + obj.shape[1] / 2)
-        y = int(max_loc[1] + obj.shape[0] / 2)
+        x = int(max_loc[0] + obj.shape[1] // 2) + plus_x
+        y = int(max_loc[1] + obj.shape[0] // 2) + plus_y
     else:
         logger.error("not found")
         return pyautogui.position()
@@ -429,6 +419,6 @@ if __name__ == "__main__":
     logger = make_logger(handler=get_log_handler(10))
 
     move_and_click(1000, 500)
-    gold_color = np.array([105, 253, 192], dtype=np.uint8)
-    normal_color = np.array([213, 212, 142], dtype=np.uint8)
+    gold_color = (105, 253, 192)
+    normal_color = (213, 212, 142)
     xx, yy = specified_color(gold_color)
