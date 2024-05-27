@@ -112,7 +112,7 @@ def move_and_click(
         if t > 0.5:
             t = 0.35
         elif t < 0:
-            t = 0.1
+            t = 0.15
 
     # マウスを指定された位置に移動し、クリックする
     pyautogui.moveTo(x, y, duration=t)
@@ -137,7 +137,7 @@ def specified_color(
     label_count: int = 1,
     near_label: tuple[int, int] = (),
     bottom: bool = False,
-    threshold: int = 3,  # 適宜調整
+    threshold: int = 10,  # 適宜調整
     exclude_radius: int = 70,
     min_size: int = 100,
     save: str = "",
@@ -165,15 +165,20 @@ def specified_color(
     # RGB値の処理
     if isinstance(RGB, tuple) or isinstance(RGB, list):
         if len(RGB) != 3:
-            raise ValueError("RGBは3つの整数からなるタプルまたはリストでなければなりません。")
+            raise ValueError(
+                "RGBは3つの整数からなるタプルまたはリストでなければなりません。"
+            )
         R, G, B = RGB
     elif isinstance(RGB, int):
         if G is None or B is None:
-            raise ValueError("RGBを個別の整数として提供する場合、GとBも指定する必要があります。")
+            raise ValueError(
+                "RGBを個別の整数として提供する場合、GとBも指定する必要があります。"
+            )
         R = RGB
     else:
-        raise ValueError("RGBは、タプル、リスト、または赤成分を表す整数でなければなりません。")
-
+        raise ValueError(
+            "RGBは、タプル、リスト、または赤成分を表す整数でなければなりません。"
+        )
 
     # 目標色をNumPy配列に変換
     target_color = np.array([B, G, R], dtype=np.uint8)
@@ -203,7 +208,9 @@ def specified_color(
 
     # マウスカーソル周辺の座標を除外
     if exclude_radius:
-        target_x, target_y = pyautogui.position()
+        x, y = pyautogui.position()
+        target_x -= plus_x
+        target_y -= plus_y
         min_x = max(0, target_x - exclude_radius)
         max_x = min(image.shape[1], target_x + exclude_radius)
         min_y = max(0, target_y - exclude_radius)
