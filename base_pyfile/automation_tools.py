@@ -66,6 +66,7 @@ def move_and_click(
     x_error: int = 0,
     y_error: int = 0,
     t: float = None,
+    mini_time=0,
     learning_probability=0,
 ) -> None:
     """
@@ -107,7 +108,7 @@ def move_and_click(
         distance = int(np.sqrt((x2 - x) ** 2 + (y2 - y) ** 2))
 
         # 距離に基づいて時間を計算
-        t = distance / 800
+        t = distance / 800 - mini_time
         if t > 0.5:
             t = 0.35
         elif t < 0:
