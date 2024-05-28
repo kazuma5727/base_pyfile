@@ -108,11 +108,11 @@ def move_and_click(
         distance = int(np.sqrt((x2 - x) ** 2 + (y2 - y) ** 2))
 
         # 距離に基づいて時間を計算
-        t = distance / 800 - mini_time
+        t = distance / 900 - mini_time
         if t > 0.5:
             t = 0.35
         elif t < 0:
-            t = 0.15
+            t = 0.12
 
     # マウスを指定された位置に移動し、クリックする
     pyautogui.moveTo(x, y, duration=t)
@@ -139,6 +139,7 @@ def specified_color(
     bottom: bool = False,
     threshold: int = 10,  # 適宜調整
     exclude_radius: int = 70,
+    max_size: int = float("inf"),
     min_size: int = 100,
     save: str = "",
 ) -> tuple[int, int]:
@@ -156,7 +157,8 @@ def specified_color(
         bottom (bool, optional): 最も下にあるピクセルを取得するかどうか。
         threshold (int, optional): 色の距離の閾値。
         exclude_radius (int, optional): マウスカーソル周辺の除外半径。
-        min_size (int, optional): 検出する最小サイズ。
+        max_size (int, optional): 検出する最大サイズ。デフォルトは無限大。
+        min_size (int, optional): 検出する最小サイズ。デフォルトは100。
         save (str, optional): マスク画像の保存先パス。
 
     Returns:
@@ -267,9 +269,12 @@ def specified_color(
         # エリアの大きい順にソート
         areas_and_labels.sort(reverse=True, key=lambda x: x[0])
 
-        for idx, (area, label) in enumerate(areas_and_labels):
-            if idx >= label_count or area < min_size:
+        for area, label in areas_and_labels:
+            if area > max_size:
+                continue
+            if len(xy_list) >= label_count or area < min_size:
                 break
+
             x = stats[label, cv2.CC_STAT_LEFT]
             y = stats[label, cv2.CC_STAT_TOP]
             w = stats[label, cv2.CC_STAT_WIDTH]
@@ -279,7 +284,10 @@ def specified_color(
                 f"  座標 (x, y) = ({x + w // 2 + plus_x}, {y + h // 2 + plus_y})"
             )
             logger.info(f"幅 = {w}, 高さ = {h}, 面積 = {area}")
-            xy_list.append([x + w // 2 + plus_x, y + h // 2 + plus_y])
+            if bottom:
+                xy_list.append([x + w // 2 + plus_x, y + h + plus_y])
+            else:
+                xy_list.append([x + w // 2 + plus_x, y + h // 2 + plus_y])
         if label_count == 1:
             return xy_list[0]
         else:
@@ -321,13 +329,14 @@ def specified_color(
     if bottom:
         bottom_row = np.max(rows)
         bottom_row_indices = np.where(rows == bottom_row)
-        Ransom = np.random.randint(0, len(bottom_row_indices))
-        bottom_col = cols[bottom_row_indices[Ransom]][0]
+        rand_index = np.random.randint(0, len(bottom_row_indices))
+        bottom_col = cols[bottom_row_indices[rand_index]][0]
         x = bottom_col
         y = bottom_row
     else:
-        x = cols[np.random.randint(0, len(cols))]
-        y = rows[np.random.randint(0, len(rows))]
+        rand_index = np.random.randint(0, len(rows))
+        x = cols[rand_index]
+        y = rows[rand_index]
     return x + plus_x, y + plus_y
 
 
