@@ -66,8 +66,8 @@ def move_and_click(
     x_error: int = 0,
     y_error: int = 0,
     t: float = None,
-    mini_time=0,
-    learning_probability=0,
+    accelerator: float = 0,
+    learning_probability: int = 0,
 ) -> None:
     """
     マウスを指定された位置に移動してクリックします。
@@ -78,7 +78,8 @@ def move_and_click(
         x_error (int, optional): X軸の誤差。デフォルトは0。
         y_error (int, optional): Y軸の誤差。デフォルトは0。
         t (float, optional): 移動にかかる時間。Noneの場合、自動的に計算されます。デフォルトはNone。
-        learning_probability (int): 1/learning_probabilityの割合で画像を保存。デフォルトは0。
+        accelerator (float, optional): 移動時間の最小時間調整値。デフォルトは0。
+        learning_probability (int, optional): 1/learning_probabilityの割合で画像を保存。デフォルトは0。
 
     Returns:
         None
@@ -108,7 +109,7 @@ def move_and_click(
         distance = int(np.sqrt((x2 - x) ** 2 + (y2 - y) ** 2))
 
         # 距離に基づいて時間を計算
-        t = distance / 900 - mini_time
+        t = distance / 900 - accelerator
         if t > 0.5:
             t = 0.35
         elif t < 0:
