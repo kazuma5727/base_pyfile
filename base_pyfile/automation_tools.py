@@ -112,8 +112,10 @@ def move_and_click(
         t = distance / 900 - accelerator
         if t > 0.5:
             t = 0.35
+        elif t < -3:
+            t = 0.11
         elif t < 0:
-            t = 0.12
+            t = 0.13
 
     # マウスを指定された位置に移動し、クリックする
     pyautogui.moveTo(x, y, duration=t)
@@ -212,8 +214,8 @@ def specified_color(
     # マウスカーソル周辺の座標を除外
     if exclude_radius:
         x, y = pyautogui.position()
-        target_x -= plus_x
-        target_y -= plus_y
+        target_x = x - plus_x
+        target_y = y - plus_y
         min_x = max(0, target_x - exclude_radius)
         max_x = min(image.shape[1], target_x + exclude_radius)
         min_y = max(0, target_y - exclude_radius)
