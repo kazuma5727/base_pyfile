@@ -4,3 +4,4 @@ ruamel.yaml
 tqdm
 pyautogui
 opencv-python
+numba
