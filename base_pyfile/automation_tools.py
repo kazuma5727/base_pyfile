@@ -144,6 +144,7 @@ def specified_color(
     exclude_radius: int = 70,
     max_size: int = float("inf"),
     min_size: int = 100,
+    found: bool = False,
     save: str = "",
 ) -> tuple[int, int]:
     """
@@ -256,10 +257,17 @@ def specified_color(
     if not len(cols):
         logger.error("not found")
         x, y = pyautogui.position()
+        
+        
         if label_count > 1:
-            return [(x, y)]
+            ret = [(x, y)]
         else:
-            return x, y
+            ret = x, y
+            
+        if found:
+            return ret, False
+        else:
+            return ret
 
     if label_count:
         logger.debug(f"label:{label_count} label数: {num_labels}")
