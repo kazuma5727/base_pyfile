@@ -199,8 +199,8 @@ def specified_color_fast_ver(
     # 画像読み込み
     if image is None:
         image = cv2.cvtColor(np.array(pyautogui.screenshot()), cv2.COLOR_RGB2BGR)
-    elif isinstance(image, str):
-        image = cv2.imread(image)
+    elif isinstance(image, str) or isinstance(image, Path):
+        image = cv2.imread(str(image))
 
     # 画像の一部を切り抜く
     if left_right_upper_Lower:
@@ -296,8 +296,8 @@ def specified_color(
     # 画像読み込み
     if image is None:
         image = cv2.cvtColor(np.array(pyautogui.screenshot()), cv2.COLOR_RGB2BGR)
-    elif isinstance(image, str):
-        image = cv2.imread(image)
+    elif isinstance(image, str) or isinstance(image, Path):
+        image = cv2.imread(str(image))
 
     # 画像の一部を切り抜く
     if left_right_upper_Lower:
