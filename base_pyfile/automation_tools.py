@@ -162,6 +162,79 @@ def move_and_click(
     fast_click(x, y)
 
 
+def specified_color_fast_ver(
+    RGB: tuple[int, int, int] | list[int] | int,
+    G: int = None,
+    B: int = None,
+    image: np.ndarray = None,
+    left_right_upper_Lower: tuple[int, int, int, int] = (),
+    label_count: int = 1,
+    near_label: tuple[int, int] = (),
+    bottom: bool = False,
+    threshold: int = 10,  # 適宜調整
+    exclude_radius: int = 70,
+    max_size: int = float("inf"),
+    min_size: int = 100,
+    found: bool = False,
+    save: str = "",
+) -> tuple[int, int]:
+
+    # RGB値の処理
+    if isinstance(RGB, tuple) or isinstance(RGB, list):
+        if len(RGB) != 3:
+            raise ValueError(
+                "RGBは3つの整数からなるタプルまたはリストでなければなりません。"
+            )
+        R, G, B = RGB
+    elif isinstance(RGB, int):
+        if G is None or B is None:
+            raise ValueError(
+                "RGBを個別の整数として提供する場合、GとBも指定する必要があります。"
+            )
+        R = RGB
+    else:
+        raise ValueError(
+            "RGBは、タプル、リスト、または赤成分を表す整数でなければなりません。"
+        )
+    # 画像読み込み
+    if image is None:
+        image = cv2.cvtColor(np.array(pyautogui.screenshot()), cv2.COLOR_RGB2BGR)
+    elif isinstance(image, str):
+        image = cv2.imread(image)
+
+    # 画像の一部を切り抜く
+    if left_right_upper_Lower:
+        start_col, end_col, start_row, end_row = left_right_upper_Lower
+        image = image[start_row:end_row, start_col:end_col]
+        plus_x = start_col
+        plus_y = start_row
+
+    else:
+        plus_x = 0
+        plus_y = 0
+
+    # 目標色をNumPy配列に変換
+    target_bgr = (B, G, R)
+    lower_bound = np.array([max(0, target_bgr[i] - threshold) for i in range(3)])
+    upper_bound = np.array([min(255, target_bgr[i] + threshold) for i in range(3)])
+
+    mask = cv2.inRange(image, lower_bound, upper_bound)
+    rows, cols = np.where(mask == 255)
+
+    if bottom:
+        bottom_row = np.max(rows)
+        bottom_row_indices = np.where(rows == bottom_row)
+        rand_index = np.random.randint(0, len(bottom_row_indices))
+        bottom_col = cols[bottom_row_indices[rand_index]][0]
+        x = bottom_col
+        y = bottom_row
+    else:
+        rand_index = np.random.randint(0, len(rows))
+        x = cols[rand_index]
+        y = rows[rand_index]
+    return x + plus_x, y + plus_y
+
+
 def specified_color(
     RGB: tuple[int, int, int] | list[int] | int,
     G: int = None,

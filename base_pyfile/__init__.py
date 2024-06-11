@@ -4,6 +4,7 @@ from base_pyfile.automation_tools import (
     learning_materials,
     move_and_click,
     specified_color,
+    specified_color_fast_ver,
     templates_matching,
 )
 from base_pyfile.file_manager import read_text_file, write_file
@@ -29,6 +30,7 @@ __all__ = [
     "learning_materials",
     "move_and_click",
     "specified_color",
+    "specified_color_fast_ver",
     "templates_matching",
     "read_text_file",
     "write_file",
