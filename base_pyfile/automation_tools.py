@@ -2,11 +2,12 @@ import os
 import sys
 from logging import NullHandler, getLogger
 from pathlib import Path
-from typing import Any
+from typing import Any, Tuple, Union
 
 import cv2
 import numpy as np
 import pyautogui
+from pynput.mouse import Button, Controller
 
 from base_pyfile.file_manager import write_file
 from base_pyfile.log_setting import get_log_handler, make_logger
@@ -17,6 +18,33 @@ from base_pyfile.path_manager import unique_path
 
 logger = getLogger("log").getChild(__name__)
 logger.addHandler(NullHandler())
+
+
+# 指定の座標に移動してクリックする関数
+def fast_click(position: Union[Tuple[int, int], int], y: int = None) -> None:
+    """
+    指定された座標(x, y)でマウスの左クリックを行う関数。
+    座標はタプル(x, y)またはxとyの別々の引数として渡すことができる。
+
+    Args:
+        position (Union[Tuple[int, int], int]): クリックするX座標または(X, Y)のタプル。
+        y (int, optional): クリックするY座標。positionがタプルの場合は省略。
+    """
+    # 座標の形式をチェックして適切な座標を設定
+    if isinstance(position, tuple):
+        x, y = position
+    else:
+        x = position
+        if y is None:
+            raise ValueError("Y座標を指定する必要があります")
+    # マウスコントローラのインスタンスを作成
+    mouse = Controller()
+
+    # マウスカーソルを指定された座標に移動
+    mouse.position = (x, y)
+
+    # マウスの左ボタンをクリック
+    mouse.click(Button.left, 1)
 
 
 def learning_materials(
@@ -98,8 +126,9 @@ def move_and_click(
         )
 
     # 誤差を考慮してランダムな位置を計算
-    x = np.random.randint(x - x_error, x + 1 + x_error)
-    y = np.random.randint(y - y_error, y + 1 + y_error)
+    if x_error or y_error:
+        x = np.random.randint(x - x_error, x + 1 + x_error)
+        y = np.random.randint(y - y_error, y + 1 + y_error)
 
     # 時間が指定されていない場合、自動で計算
     if t is None:
@@ -116,9 +145,11 @@ def move_and_click(
             t = 0.11
         elif t < 0:
             t = 0.13
+        pyautogui.moveTo(x, y, duration=t)
+    elif t:
+        # マウスを指定された位置に移動し、クリックする
+        pyautogui.moveTo(x, y, duration=t)
 
-    # マウスを指定された位置に移動し、クリックする
-    pyautogui.moveTo(x, y, duration=t)
     if learning_probability:
         # 学習用の画像を保存する関数を呼び出し
         if isinstance(x_position, tuple):
@@ -128,7 +159,7 @@ def move_and_click(
 
     # 指定位置をクリック
     logger.debug(f"click({x}, {y})")
-    pyautogui.click(x, y)
+    fast_click(x, y)
 
 
 def specified_color(
@@ -257,13 +288,12 @@ def specified_color(
     if not len(cols):
         logger.error("not found")
         x, y = pyautogui.position()
-        
-        
+
         if label_count > 1:
             ret = [(x, y)]
         else:
             ret = x, y
-            
+
         if found:
             return ret, False
         else:

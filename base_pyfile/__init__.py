@@ -1,4 +1,5 @@
 from base_pyfile.automation_tools import (
+    fast_click,
     full_templatematching,
     learning_materials,
     move_and_click,
@@ -23,6 +24,7 @@ from base_pyfile.path_manager import (
 # from base_pyfile.scraping import download_image
 
 __all__ = [
+    "fast_click",
     "full_templatematching",
     "learning_materials",
     "move_and_click",
@@ -49,4 +51,4 @@ num_modules = len(__all__)
 # バージョン番号を更新
 tens_place = num_modules // 10
 ones_place = num_modules % 10
-__version__ = f"{tens_place}.{ones_place}.9"
+__version__ = f"{tens_place}.{ones_place}.0"
