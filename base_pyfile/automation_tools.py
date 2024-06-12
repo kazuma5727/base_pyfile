@@ -232,6 +232,7 @@ def specified_color_fast_ver(
         rand_index = np.random.randint(0, len(rows))
         x = cols[rand_index]
         y = rows[rand_index]
+        
     return x + plus_x, y + plus_y
 
 
@@ -572,4 +573,6 @@ if __name__ == "__main__":
     move_and_click(1000, 500)
     gold_color = (105, 253, 192)
     normal_color = (213, 212, 142)
-    xx, yy = specified_color(gold_color)
+    xx, yy = specified_color(109,69,59,label_c)
+
+
