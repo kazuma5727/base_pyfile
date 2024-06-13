@@ -232,7 +232,7 @@ def specified_color_fast_ver(
         rand_index = np.random.randint(0, len(rows))
         x = cols[rand_index]
         y = rows[rand_index]
-        
+
     return x + plus_x, y + plus_y
 
 
@@ -459,6 +459,7 @@ def templates_matching(
     templates: str | np.ndarray,
     image: np.ndarray = None,
     left_right_upper_Lower: tuple = (),
+    found: bool = False,
 ) -> tuple[int, int]:
     """
     テンプレートマッチングを用いて画像内のテンプレートの位置を検出します。
@@ -500,7 +501,10 @@ def templates_matching(
         y = int(max_loc[1] + obj.shape[0] // 2) + plus_y
     else:
         logger.error("not found")
-        return pyautogui.position()
+        if found:
+            return pyautogui.position(), False
+        else:        
+            return pyautogui.position()
     return x, y
 
 
@@ -573,6 +577,4 @@ if __name__ == "__main__":
     move_and_click(1000, 500)
     gold_color = (105, 253, 192)
     normal_color = (213, 212, 142)
-    xx, yy = specified_color(109,69,59,label_count=1)
-
-
+    xx, yy = specified_color(109, 69, 59, label_count=1)

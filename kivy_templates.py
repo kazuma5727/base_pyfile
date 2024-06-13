@@ -46,7 +46,7 @@ class ImageWidget(Widget):
     height = "height"
     Auto_mode = "Auto_mode"
 
-    ini_file = Path(__file__).parents[0] / f"{Path(__file__).stem}.ini"
+    ini_file = Path(__file__).parent / f"{Path(__file__).stem}.ini"
     config = configparser.ConfigParser()
     config.read(ini_file)
 
