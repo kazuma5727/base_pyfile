@@ -573,6 +573,6 @@ if __name__ == "__main__":
     move_and_click(1000, 500)
     gold_color = (105, 253, 192)
     normal_color = (213, 212, 142)
-    xx, yy = specified_color(109,69,59,label_c)
+    xx, yy = specified_color(109,69,59,label_count=1)
 
 
