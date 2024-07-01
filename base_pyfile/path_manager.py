@@ -15,9 +15,7 @@ from base_pyfile.log_setting import get_log_handler, make_logger
 logger = getLogger("log").getChild(__name__)
 logger.addHandler(NullHandler())
 
-
 existing_files = {}
-
 
 def unique_path(
     file_path: str,
@@ -46,7 +44,7 @@ def unique_path(
         file_path = str(file_path)
 
     # すでに存在するファイルのリストにファイルパスを追加する
-    if not file_path in existing_files:
+    if file_path not in existing_files:
         existing_files[file_path] = counter
 
     # ファイル名と拡張子を分離する
@@ -61,7 +59,8 @@ def unique_path(
         new_path = file_path
         check_path = file_path
         return_path = file_path.format(existing_files[file_path])
-
+        
+    # パスが存在しない場合、ディレクトリを作成して返す
     if not (
         os.path.exists(new_path.format(""))
         or os.path.exists(new_path.format(existing_files[file_path]))
@@ -239,7 +238,7 @@ def get_all_files(
     return natsorted(file_paths)
 
 
-def get_folders_and_files(directory: Union[str, Path]) -> list[Path]:
+def get_folders_and_files(directory: Union[str, Path]) -> List[Path]:
     """
     指定されたディレクトリに入っているフォルダとファイルをリストで返す。
     Args:
@@ -259,13 +258,10 @@ def find_empty_folders(
     渡されたフォルダのリストから、空のフォルダを探してリストで返す。
 
     Args:
-    ・folder_list: strまたはPathまたはstrまたはPathのリスト。調査するフォルダのリスト。
+        folder_list (Union[str, Path, List[Union[str, Path]]]): 調査するフォルダのリスト
 
     Returns:
-    ・empty_folders: Pathのリスト。空のフォルダのリスト。
-
-    Raises:
-    ・なし
+        List[Path]: 空のフォルダのリスト
     """
     # フォルダがリストでない場合、リストに変換する
     if isinstance(folder_list, (str, Path)):
