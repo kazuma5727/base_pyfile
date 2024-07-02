@@ -44,7 +44,9 @@ def logger_timer(level: int = 10, n=1) -> Callable:
             if n == 1:
                 logger.log(level, f"{func.__name__}: {avg_time} seconds")
             else:
-                logger.log(level, f"{func.__name__} ({n}回実行の平均): {avg_time} seconds")
+                logger.log(
+                    level, f"{func.__name__} ({n}回実行の平均): {avg_time} seconds"
+                )
             return result
 
         return wrapper

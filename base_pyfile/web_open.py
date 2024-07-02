@@ -1,14 +1,8 @@
-import os
-import sys
 import time
 import webbrowser
 from logging import NullHandler, getLogger
-from pathlib import Path
 
-from base_pyfile.log_setting import (
-    get_log_handler,
-    make_logger,
-)
+from base_pyfile.log_setting import get_log_handler, make_logger
 
 logger = getLogger("log").getChild(__name__)
 logger.addHandler(NullHandler())
