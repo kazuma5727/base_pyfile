@@ -21,6 +21,7 @@ from base_pyfile.path_manager import (
     sanitize_windows_filename,
     unique_path,
 )
+from base_pyfile.web_open import open_page
 
 # from base_pyfile.scraping import download_image
 
@@ -45,7 +46,9 @@ __all__ = [
     "get_folders_and_files",
     "get_latest_folder",
     "make_directory",
-    "sanitize_windows_filename" "unique_path",
+    "sanitize_windows_filename",
+    "unique_path",
+    "open_page",
 ]
 # パッケージ内のモジュール数を数える
 num_modules = len(__all__)
@@ -53,4 +56,4 @@ num_modules = len(__all__)
 # バージョン番号を更新
 tens_place = num_modules // 10
 ones_place = num_modules % 10
-__version__ = f"{tens_place}.{ones_place}.1"
+__version__ = f"{tens_place}.{ones_place}.0"
