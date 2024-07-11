@@ -245,7 +245,7 @@ if __name__ == "__main__":
     # input_path = 'path/to/your/file.pdf'  # または 'path/to/your/file.tiff'
     # output_folder = 'path/to/output/folder'
     # png_name = 'output_image_name'
-    # convert_to_png(input_path, output_folder, png_name)
+    convert_to_png(r"C:\Users\yamamotok\Documents\s\20240711105741584.tif")
 
     # # 画像をPDFに変換
     # image_files = ['path/to/your/image1.png', 'path/to/your/image2.png']
@@ -257,9 +257,9 @@ if __name__ == "__main__":
     # TIFFをPDFに変換
     # tiff_path = "path/to/your/file.tiff"
     # output_pdf = "path/to/output/file.pdf"
-    tiff_to_pdf(
-        r"C:\Users\yamamotok\Downloads\a.tiff",
-    )
+    # tiff_to_pdf(
+    #     r"C:\Users\yamamotok\Downloads\a.tiff",
+    # )
 
     # # PDFをTIFFに変換
     # pdf_path = 'path/to/your/file.pdf'
