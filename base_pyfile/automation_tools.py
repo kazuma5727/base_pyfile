@@ -235,6 +235,56 @@ def specified_color_fast_ver(
 
     return x + plus_x, y + plus_y
 
+def search_color(
+    RGB: tuple[int, int, int] | list[int] | int,
+    G: int = None,
+    B: int = None,
+    xy: tuple[int, int] | list[int] | int = pyautogui.position(),
+    y: int = None,
+    left_right_upper_Lower: tuple[int, int, int, int] = (),
+):
+    """_summary_"""
+    # RGB値の処理
+    if isinstance(RGB, tuple) or isinstance(RGB, list):
+        if len(RGB) != 3:
+            raise ValueError(
+                "RGBは3つの整数からなるタプルまたはリストでなければなりません。"
+            )
+        R, G, B = RGB
+    elif isinstance(RGB, int):
+        if G is None or B is None:
+            raise ValueError(
+                "RGBを個別の整数として提供する場合、GとBも指定する必要があります。"
+            )
+        R = RGB
+    else:
+        raise ValueError(
+            "RGBは、タプル、リスト、または赤成分を表す整数でなければなりません。"
+        )
+    # xy値の処理
+    if isinstance(xy, tuple) or isinstance(xy, list):
+        if len(xy) != 2:
+            raise ValueError(
+                "xyは2つの整数からなるタプルまたはリストでなければなりません。"
+            )
+        x, y = xy
+    elif isinstance(xy, int):
+        if y is None:
+            raise ValueError(
+                "xyを個別の整数として提供する場合、yを指定する必要があります。"
+            )
+        x = xy
+    else:
+        raise ValueError(
+            "xyは、タプル、リスト、またはx座標を表す整数でなければなりません。"
+        )
+
+    image = cv2.cvtColor(np.array(pyautogui.screenshot()), cv2.COLOR_RGB2BGR)
+    # 指定された座標の色を取得
+    color = image[y, x]
+    # BGR形式からRGB形式に変換
+    logger.debug(f"R: {color[2]}, G: {color[1]}, B: {color[0]}")
+    return (R, G, B) == (color[2], color[1], color[0])
 
 def specified_color(
     RGB: tuple[int, int, int] | list[int] | int,

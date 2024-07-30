@@ -245,7 +245,9 @@ if __name__ == "__main__":
     # input_path = 'path/to/your/file.pdf'  # または 'path/to/your/file.tiff'
     # output_folder = 'path/to/output/folder'
     # png_name = 'output_image_name'
-    convert_to_png(r"C:\Users\yamamotok\Documents\s\20240711105741584.tif")
+    for i in range(2,10):
+        print(i)
+        convert_to_png(fr"C:\組基\2024年\プレス\P-2024070{i}.pdf")
 
     # # 画像をPDFに変換
     # image_files = ['path/to/your/image1.png', 'path/to/your/image2.png']
@@ -280,3 +282,4 @@ if __name__ == "__main__":
 #     pdf_to_png(i, r"C:\Users\yamamotok\Documents\ss\ab", "image")
 # tiff_to_png(tiff_path, output_folder)
 # image_to_pdf(png_files, output_pdf)
+
