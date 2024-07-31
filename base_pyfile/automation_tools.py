@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 from logging import NullHandler, getLogger
 from pathlib import Path
 from typing import Any, Tuple, Union
@@ -235,13 +236,14 @@ def specified_color_fast_ver(
 
     return x + plus_x, y + plus_y
 
+
 def search_color(
     RGB: tuple[int, int, int] | list[int] | int,
     G: int = None,
     B: int = None,
     xy: tuple[int, int] | list[int] | int = pyautogui.position(),
     y: int = None,
-    left_right_upper_Lower: tuple[int, int, int, int] = (),
+    click: int = 0,
 ):
     """_summary_"""
     # RGB値の処理
@@ -284,7 +286,23 @@ def search_color(
     color = image[y, x]
     # BGR形式からRGB形式に変換
     logger.debug(f"R: {color[2]}, G: {color[1]}, B: {color[0]}")
+
+    if click == 0:
+        return (R, G, B) == (color[2], color[1], color[0])
+
+    start_time = time.time()
+
+    while (
+        not (R, G, B) == (color[2], color[1], color[0])
+        and time.time() - start_time < click
+    ):
+        time.sleep(0.5)
+    if time.time() - start_time > click:
+        return False
+    
+    move_and_click(x, y, t=0)
     return (R, G, B) == (color[2], color[1], color[0])
+
 
 def specified_color(
     RGB: tuple[int, int, int] | list[int] | int,
@@ -553,7 +571,7 @@ def templates_matching(
         logger.error("not found")
         if found:
             return pyautogui.position(), False
-        else:        
+        else:
             return pyautogui.position()
     return x, y
 
