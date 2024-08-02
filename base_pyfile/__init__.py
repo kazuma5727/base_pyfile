@@ -22,6 +22,14 @@ from base_pyfile.path_manager import (
     sanitize_windows_filename,
     unique_path,
 )
+from base_pyfile.pdf_tiff_converter import (
+    convert_to_png,
+    image_to_pdf,
+    pdf_to_png,
+    pdf_to_tiff,
+    tiff_to_pdf,
+    tiff_to_png,
+)
 from base_pyfile.web_open import open_page
 
 # from base_pyfile.scraping import download_image
@@ -58,4 +66,4 @@ num_modules = len(__all__)
 # バージョン番号を更新
 tens_place = num_modules // 10
 ones_place = num_modules % 10
-__version__ = f"{tens_place}.{ones_place}.1"
+__version__ = f"{tens_place}.{ones_place}.0"

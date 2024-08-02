@@ -1,45 +1,14 @@
-import os
-import sys
 from logging import NullHandler, getLogger
 from pathlib import Path
 
 import fitz  # PyMuPDF
 from PIL import Image
 
-from base_pyfile import (
-    get_all_files,
-    get_all_subfolders,
-    get_files,
-    get_folders_and_files,
-    get_log_handler,
-    logger_timer,
-    make_directory,
-    make_logger,
-    read_text_file,
-    unique_path,
-    write_file,
-)
+from base_pyfile.log_setting import get_log_handler, make_logger
+from base_pyfile.path_manager import unique_path
 
 logger = getLogger("log").getChild(__name__)
 logger.addHandler(NullHandler())
-
-import logging
-from pathlib import Path
-
-import fitz  # PyMuPDF
-from PIL import Image
-
-logger = logging.getLogger(__name__)
-
-
-def unique_path(path: Path) -> Path:
-    """ファイルパスがユニークになるように変更する関数。"""
-    counter = 1
-    new_path = path
-    while new_path.exists():
-        new_path = path.with_stem(f"{path.stem}_{counter}")
-        counter += 1
-    return new_path
 
 
 def pdf_to_png(pdf_path: str, output_folder: str = None, png_name: str = None) -> None:
@@ -245,9 +214,9 @@ if __name__ == "__main__":
     # input_path = 'path/to/your/file.pdf'  # または 'path/to/your/file.tiff'
     # output_folder = 'path/to/output/folder'
     # png_name = 'output_image_name'
-    for i in range(2,10):
+    for i in range(2, 10):
         print(i)
-        convert_to_png(fr"C:\組基\2024年\プレス\P-2024070{i}.pdf")
+        convert_to_png(rf"C:\組基\2024年\プレス\P-2024070{i}.pdf")
 
     # # 画像をPDFに変換
     # image_files = ['path/to/your/image1.png', 'path/to/your/image2.png']
@@ -282,4 +251,3 @@ if __name__ == "__main__":
 #     pdf_to_png(i, r"C:\Users\yamamotok\Documents\ss\ab", "image")
 # tiff_to_png(tiff_path, output_folder)
 # image_to_pdf(png_files, output_pdf)
-
