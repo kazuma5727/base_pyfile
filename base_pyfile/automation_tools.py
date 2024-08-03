@@ -3,7 +3,7 @@ import sys
 import time
 from logging import NullHandler, getLogger
 from pathlib import Path
-from typing import Any, Tuple, Union
+from typing import Any, List, Tuple, Union
 
 import cv2
 import numpy as np
@@ -238,16 +238,32 @@ def specified_color_fast_ver(
 
 
 def search_color(
-    RGB: tuple[int, int, int] | list[int] | int,
+    RGB: Union[Tuple[int, int, int], List[int], int, str],
     G: int = None,
     B: int = None,
-    xy: tuple[int, int] | list[int] | int = pyautogui.position(),
+    xy: Union[Tuple[int, int], List[int], int] = pyautogui.position(),
     y: int = None,
     click: int = 0,
-):
-    """_summary_"""
+) -> Union[bool, Tuple[int, int, int]]:
+    """
+    指定された座標の色が与えられたRGB値と一致するかを確認する。
+
+    パラメータ:
+        RGB (Union[Tuple[int, int, int], List[int], int, str]): チェックするRGB値または'found'。
+        G (int, オプション): RGBが整数の場合の緑成分。
+        B (int, オプション): RGBが整数の場合の青成分。
+        xy (Union[Tuple[int, int], List[int], int], オプション): チェックする座標。
+        y (int, オプション): xyが整数の場合のy座標。
+        click (int, オプション): 色が一致した場合にクリックするまでの待機時間。
+
+    戻り値:
+        Union[bool, Tuple[int, int, int]]: RGBが'found'の場合は座標の色、そうでない場合は色が一致するかどうかの真偽値。
+    """
+
     # RGB値の処理
-    if isinstance(RGB, tuple) or isinstance(RGB, list):
+    if RGB == "found":
+        R = G = B = None
+    elif isinstance(RGB, tuple) or isinstance(RGB, list):
         if len(RGB) != 3:
             raise ValueError(
                 "RGBは3つの整数からなるタプルまたはリストでなければなりません。"
@@ -263,6 +279,7 @@ def search_color(
         raise ValueError(
             "RGBは、タプル、リスト、または赤成分を表す整数でなければなりません。"
         )
+
     # xy値の処理
     if isinstance(xy, tuple) or isinstance(xy, list):
         if len(xy) != 2:
@@ -281,11 +298,18 @@ def search_color(
             "xyは、タプル、リスト、またはx座標を表す整数でなければなりません。"
         )
 
+    # スクリーンショットを取得し、BGR形式に変換
     image = cv2.cvtColor(np.array(pyautogui.screenshot()), cv2.COLOR_RGB2BGR)
+
     # 指定された座標の色を取得
     color = image[y, x]
+
     # BGR形式からRGB形式に変換
     logger.debug(f"R: {color[2]}, G: {color[1]}, B: {color[0]}")
+
+    # 座標の色を返す部分を追加
+    if RGB == "found":
+        return (color[2], color[1], color[0])
 
     if click == 0:
         return (R, G, B) == (color[2], color[1], color[0])
@@ -297,9 +321,12 @@ def search_color(
         and time.time() - start_time < click
     ):
         time.sleep(0.5)
+        image = cv2.cvtColor(np.array(pyautogui.screenshot()), cv2.COLOR_RGB2BGR)
+        color = image[y, x]
+
     if time.time() - start_time > click:
         return False
-    
+
     move_and_click(x, y, t=0)
     return (R, G, B) == (color[2], color[1], color[0])
 
