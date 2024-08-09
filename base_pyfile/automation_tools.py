@@ -90,7 +90,7 @@ def learning_materials(
 
 
 def move_and_click(
-    x_position: int | tuple[int, int],
+    x_position: int | tuple[int, int] = pyautogui.position(),
     y_position: int = None,
     x_error: int = 0,
     y_error: int = 0,
@@ -668,8 +668,9 @@ def full_templatematching(
 
 if __name__ == "__main__":
     logger = make_logger(handler=get_log_handler(10))
+    time.sleep(0.5)
 
-    move_and_click(1000, 500)
+    move_and_click()
     gold_color = (105, 253, 192)
     normal_color = (213, 212, 142)
     xx, yy = specified_color(109, 69, 59, label_count=1)
