@@ -2,13 +2,15 @@ import time
 import webbrowser
 from logging import NullHandler, getLogger
 
+import pyautogui
+
 from base_pyfile.log_setting import get_log_handler, make_logger
 
 logger = getLogger("log").getChild(__name__)
 logger.addHandler(NullHandler())
 
 
-def open_page(url: str, delay: int = 2,sumaho:bool = False) -> int:
+def open_page(url: str, delay: int = 2, sumaho: bool = False) -> int:
     """
     指定されたURLを開き、一定の遅延時間の後に開いたページの数を返します。
 
