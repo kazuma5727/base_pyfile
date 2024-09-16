@@ -66,4 +66,4 @@ num_modules = len(__all__)
 # バージョン番号を更新
 tens_place = num_modules // 10
 ones_place = num_modules % 10
-__version__ = f"{tens_place}.{ones_place}.3"
+__version__ = f"{tens_place}.{ones_place}.4"

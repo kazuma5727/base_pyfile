@@ -96,6 +96,7 @@ def move_and_click(
     y_error: int = 0,
     t: float = None,
     accelerator: float = 0,
+    ctrl: bool =False,
     learning_probability: int = 0,
 ) -> None:
     """
@@ -160,7 +161,12 @@ def move_and_click(
 
     # 指定位置をクリック
     logger.debug(f"click({x}, {y})")
-    fast_click(x, y)
+    if ctrl:
+        pyautogui.keyDown("ctrl")
+        fast_click(x, y)
+        pyautogui.keyUp("ctrl")
+    else:
+        fast_click(x, y)
 
 
 def specified_color_fast_ver(
