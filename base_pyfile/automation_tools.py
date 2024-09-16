@@ -96,7 +96,7 @@ def move_and_click(
     y_error: int = 0,
     t: float = None,
     accelerator: float = 0,
-    ctrl: bool =False,
+    ctrl: bool = False,
     learning_probability: int = 0,
 ) -> None:
     """
@@ -560,6 +560,7 @@ def templates_matching(
     templates: str | np.ndarray,
     image: np.ndarray = None,
     left_right_upper_Lower: tuple = (),
+    threshold: float = 0.4,
     found: bool = False,
 ) -> tuple[int, int]:
     """
@@ -597,7 +598,7 @@ def templates_matching(
 
     min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(map_cc)
 
-    if max_val > 0.4:
+    if max_val > threshold:
         x = int(max_loc[0] + obj.shape[1] // 2) + plus_x
         y = int(max_loc[1] + obj.shape[0] // 2) + plus_y
     else:
