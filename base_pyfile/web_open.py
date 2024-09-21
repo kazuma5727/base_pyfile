@@ -27,9 +27,12 @@ def open_page(url: str, delay: int = 2, sumaho: bool = False) -> int:
     time.sleep(delay)  # 指定された遅延時間だけ待機
     if sumaho:
         pyautogui.press("F12")
-        time.sleep(1)
+        time.sleep(2)
         pyautogui.press("F5")
         time.sleep(delay)  # 指定された遅延時間だけ待機
+        pyautogui.press("F5")
+        time.sleep(delay)  # 指定された遅延時間だけ待機
+
     return web_count  # 開いたページの数を返す
 
 
