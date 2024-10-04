@@ -98,6 +98,7 @@ def move_and_click(
     accelerator: float = 0,
     ctrl: bool = False,
     learning_probability: int = 0,
+    save: str = "",
 ) -> None:
     """
     マウスを指定された位置に移動してクリックします。
@@ -158,6 +159,11 @@ def move_and_click(
             learning_materials(*x_position, probability=learning_probability)
         else:
             learning_materials(x_position, y_position, probability=learning_probability)
+    if save:
+        cv2.imwrite(
+            str(unique_path(rf"{save}\mask_{{}}.png")),
+            cv2.cvtColor(np.array(pyautogui.screenshot()), cv2.COLOR_RGB2BGR),
+        )
 
     # 指定位置をクリック
     logger.debug(f"click({x}, {y})")
