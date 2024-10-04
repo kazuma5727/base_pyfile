@@ -74,7 +74,7 @@ def learning_materials(
     if np.random.randint(1, probability + 1) == 1:
         image = cv2.cvtColor(np.array(pyautogui.screenshot()), cv2.COLOR_RGB2BGR)
         w, h = image.shape[1], image.shape[0]
-        text = "{classes} {:7f} {:7f} {:7f} {:7f}\n".format(
+        text = "{} {:7f} {:7f} {:7f} {:7f}\n".format(
             classes,
             x / w,
             y / h,
