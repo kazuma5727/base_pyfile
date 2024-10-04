@@ -84,7 +84,7 @@ def learning_materials(
         learn = unique_path("learn\materials_{}.png")
         cv2.imwrite(str(learn), image)
         # 拡張子をpngから、txtに変更
-        write_file(learn.with_suffix(".txt"), text)
+        write_file(Path(learn).with_suffix(".txt"), text)
 
     return x, y
 
@@ -504,8 +504,12 @@ def specified_color(
                 xy_list.append([x + w // 2 + plus_x, y + h + plus_y])
             else:
                 xy_list.append([x + w // 2 + plus_x, y + h // 2 + plus_y])
-        if label_count == 1:
+        if label_count == 1 and xy_list:
             return xy_list[0]
+        
+        elif label_count == 1 and not xy_list:
+            return pyautogui.position()
+        
         else:
             return xy_list
 
