@@ -3,6 +3,8 @@ import webbrowser
 from logging import NullHandler, getLogger
 
 import pyautogui
+import requests
+from bs4 import BeautifulSoup
 
 from base_pyfile.log_setting import get_log_handler, make_logger
 
@@ -35,6 +37,12 @@ def open_page(url: str, delay: int = 2, sumaho: bool = False) -> int:
 
     return web_count  # 開いたページの数を返す
 
+
+def get_urls(url: str) -> list:
+    response = requests.get("url")
+    soup = BeautifulSoup(response.content, "html.parser")
+    current_urls = [link.get("href") for link in soup.find_all("a") if link.get("href")]
+    return current_urls
 
 if __name__ == "__main__":
     logger = make_logger(handler=get_log_handler(10))

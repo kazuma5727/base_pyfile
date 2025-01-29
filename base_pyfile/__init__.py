@@ -30,7 +30,7 @@ from base_pyfile.pdf_tiff_converter import (
     tiff_to_pdf,
     tiff_to_png,
 )
-from base_pyfile.web_open import open_page
+from base_pyfile.web_open import get_urls, open_page
 
 # from base_pyfile.scraping import download_image
 
@@ -59,6 +59,7 @@ __all__ = [
     "sanitize_windows_filename",
     "unique_path",
     "open_page",
+    "get_urls",
 ]
 # パッケージ内のモジュール数を数える
 num_modules = len(__all__)
