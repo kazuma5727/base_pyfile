@@ -52,4 +52,4 @@ def get_urls(url: str) -> list:
 if __name__ == "__main__":
     logger = make_logger(handler=get_log_handler(10))
 
-    open_page()
+    # open_page()
