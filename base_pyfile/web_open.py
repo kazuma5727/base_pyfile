@@ -7,6 +7,8 @@ import requests
 from bs4 import BeautifulSoup
 
 from base_pyfile.log_setting import get_log_handler, make_logger
+from base_pyfile.automation_tools import search_color,move_and_click
+
 
 logger = getLogger("log").getChild(__name__)
 logger.addHandler(NullHandler())
@@ -29,6 +31,8 @@ def open_page(url: str, delay: int = 2, sumaho: bool = False) -> int:
     time.sleep(delay)  # 指定された遅延時間だけ待機
     if sumaho:
         pyautogui.press("F12")
+        # if search_color():
+        #     move_and_click()
         time.sleep(2)
         pyautogui.press("F5")
         time.sleep(delay)  # 指定された遅延時間だけ待機
@@ -39,7 +43,7 @@ def open_page(url: str, delay: int = 2, sumaho: bool = False) -> int:
 
 
 def get_urls(url: str) -> list:
-    response = requests.get("url")
+    response = requests.get(url)
     soup = BeautifulSoup(response.content, "html.parser")
     current_urls = [link.get("href") for link in soup.find_all("a") if link.get("href")]
     return current_urls
