@@ -31,8 +31,8 @@ def open_page(url: str, delay: int = 2, sumaho: bool = False) -> int:
     time.sleep(delay)  # 指定された遅延時間だけ待機
     if sumaho:
         pyautogui.press("F12")
-        # if search_color():
-        #     move_and_click()
+        if not search_color(59,59,63,122,122):
+            move_and_click(2050,130)
         time.sleep(2)
         pyautogui.press("F5")
         time.sleep(delay)  # 指定された遅延時間だけ待機
