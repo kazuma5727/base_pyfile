@@ -30,7 +30,7 @@ from base_pyfile.pdf_tiff_converter import (
     tiff_to_pdf,
     tiff_to_png,
 )
-from base_pyfile.web_open import get_urls, open_page
+from base_pyfile.web_open import get_urls, open_page, tab_delete
 
 # from base_pyfile.scraping import download_image
 
@@ -60,6 +60,7 @@ __all__ = [
     "unique_path",
     "open_page",
     "get_urls",
+    "tab_delete",
 ]
 # パッケージ内のモジュール数を数える
 num_modules = len(__all__)
@@ -67,4 +68,4 @@ num_modules = len(__all__)
 # バージョン番号を更新
 tens_place = num_modules // 10
 ones_place = num_modules % 10
-__version__ = f"{tens_place}.{ones_place}.8"
+__version__ = f"{tens_place}.{ones_place}.0"

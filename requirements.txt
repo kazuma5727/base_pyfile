@@ -7,3 +7,4 @@ opencv-python
 numba
 pynput
 PyMuPDF
+pyperclip
