@@ -185,7 +185,27 @@ def specified_color_fast_ver(
     found: bool = False,
     save: str = "",
 ) -> tuple[int, int]:
+    """
+    指定した色を画像内で検出し、その位置を返します。
 
+    Args:
+        RGB (tuple[int, int, int] | list[int] | int): 検出する色のRGB値。
+        G (int, optional): 色の緑成分。RGBがタプルやリストの場合は省略。
+        B (int, optional): 色の青成分。RGBがタプルやリストの場合は省略。
+        image (np.ndarray, optional): 読み込む画像。省略時はスクリーンショットを使用。
+        left_right_upper_Lower (tuple[int, int, int, int], optional): 画像の一部を切り抜く範囲。
+        label_count (int, optional): 検出するラベルの数。
+        near_label (tuple[int, int], optional): 指定した座標に最も近いラベルを取得。
+        bottom (bool, optional): 最も下にあるピクセルを取得するかどうか。
+        threshold (int, optional): 色の距離の閾値。
+        exclude_radius (int, optional): マウスカーソル周辺の除外半径。
+        max_size (int, optional): 検出する最大サイズ。デフォルトは無限大。
+        min_size (int, optional): 検出する最小サイズ。デフォルトは100。
+        save (str, optional): マスク画像の保存先パス。
+
+    Returns:
+        tuple[int, int]: 検出された色の位置。
+    """
     # RGB値の処理
     if isinstance(RGB, tuple) or isinstance(RGB, list):
         if len(RGB) != 3:
@@ -227,6 +247,97 @@ def specified_color_fast_ver(
 
     mask = cv2.inRange(image, lower_bound, upper_bound)
     rows, cols = np.where(mask == 255)
+    if save:
+        cv2.imwrite(
+            str(unique_path(rf"{save}\mask_{{}}.png")),
+            result,
+        )
+
+    if not len(cols):
+        logger.error("not found")
+        x, y = pyautogui.position()
+
+        if label_count > 1:
+            ret = [(x, y)]
+        else:
+            ret = x, y
+
+        if found:
+            return ret, False
+        else:
+            return ret
+
+    if label_count:
+        logger.debug(f"label:{label_count} label数: {num_labels}")
+        xy_list = []
+        # 各連結成分のエリアとラベルをリストに格納
+        areas_and_labels = [
+            (stats[i, cv2.CC_STAT_AREA], i) for i in range(1, num_labels)
+        ]  # ラベル0は背景なので無視
+
+        # エリアの大きい順にソート
+        areas_and_labels.sort(reverse=True, key=lambda x: x[0])
+
+        for area, label in areas_and_labels:
+            if area > max_size:
+                continue
+            if len(xy_list) >= label_count or area < min_size:
+                break
+
+            x = stats[label, cv2.CC_STAT_LEFT]
+            y = stats[label, cv2.CC_STAT_TOP]
+            w = stats[label, cv2.CC_STAT_WIDTH]
+            h = stats[label, cv2.CC_STAT_HEIGHT]
+
+            logger.info(
+                f"  座標 (x, y) = ({x + w // 2 + plus_x}, {y + h // 2 + plus_y})"
+            )
+            logger.info(f"幅 = {w}, 高さ = {h}, 面積 = {area}")
+            if bottom:
+                xy_list.append([x + w // 2 + plus_x, y + h + plus_y])
+            else:
+                xy_list.append([x + w // 2 + plus_x, y + h // 2 + plus_y])
+        if label_count == 1 and xy_list:
+            return xy_list[0]
+        
+        elif label_count == 1 and not xy_list:
+            return pyautogui.position()
+        
+        else:
+            return xy_list
+
+    if near_label:
+        target_coord = pyautogui.position()
+        # 指定した座標に最も近いラベルを取得
+        min_distance = float("inf")
+        closest_label = None
+        for i in range(1, num_labels):
+            center = centroids[i]
+            distance = np.linalg.norm(np.array(target_coord) - center)
+            if distance < min_distance:
+                min_distance = distance
+                closest_label = i
+
+        # 最も近いラベルの領域のみを残し、それ以外を黒く塗りつぶす
+        result = np.zeros_like(result)
+        if closest_label is not None:
+            result[labels == closest_label] = result[labels == closest_label]
+            x = stats[closest_label, cv2.CC_STAT_LEFT]
+            y = stats[closest_label, cv2.CC_STAT_TOP]
+            width = stats[closest_label, cv2.CC_STAT_WIDTH]
+            height = stats[closest_label, cv2.CC_STAT_HEIGHT]
+            center_x = x + width // 2
+            center_y = y + height // 2
+
+            logger.debug(f"中央座標: ({center_x}, {center_y})")
+            logger.debug(f"幅: {width}")
+            logger.debug(f"高さ: {height}")
+        else:
+            logger.error("指定した座標に有効なラベルが見つかりませんでした。")
+        if bottom:
+            return center_x + plus_x, y + height + plus_y
+        else:
+            return center_x + plus_x, center_y + plus_y
 
     if bottom:
         bottom_row = np.max(rows)
@@ -239,7 +350,6 @@ def specified_color_fast_ver(
         rand_index = np.random.randint(0, len(rows))
         x = cols[rand_index]
         y = rows[rand_index]
-
     return x + plus_x, y + plus_y
 
 
