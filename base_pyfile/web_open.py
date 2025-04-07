@@ -69,10 +69,10 @@ def get_urls(url: str, web=False) -> list:
     return current_urls
 
 
-def tab_delete(count=1):
+def tab_delete(count=1,delay=0.3):
     time.sleep(1)
     for i in tqdm(range(count)):
-        time.sleep(0.3)
+        time.sleep(delay)
         pyautogui.hotkey("ctrl", "w")
     return 0
 
