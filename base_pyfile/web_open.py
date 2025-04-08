@@ -36,8 +36,13 @@ def open_page(urls: list, delay: int = 2, sumaho: bool = False, paste=False) -> 
             if sumaho:
                 pyautogui.press("F12")
                 time.sleep(2)
-                if not search_color(59, 59, 63, 122, 122) or not search_color(236, 236, 236, 122, 122):
-                    move_and_click(2050, 130)
+                gray =search_color(59, 59, 63, 122, 122)
+                white = search_color(236, 236, 236, 122, 122)
+                if any([gray, white]):
+                    if gray:
+                        move_and_click(2050, 130)
+                    else:
+                        move_and_click(2050, 130)
                     time.sleep(2)
                 pyautogui.press("F5")
                 time.sleep(delay)  # 指定された遅延時間だけ待機
