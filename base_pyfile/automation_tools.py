@@ -328,7 +328,7 @@ def specified_color(
     if num_labels <= 1:
         logger.error("not found")
         x, y = pyautogui.position()
-        ret = (x, y) if label_count == 1 else (x, y)
+        ret = (x, y) if label_count == 1 else [(x, y)]
         return (ret, False) if found else ret
 
     xy_list = []
@@ -358,7 +358,9 @@ def specified_color(
     if label_count == 1 and xy_list:
         return xy_list[0]
     elif label_count == 1 and not xy_list:
-        return pyautogui.position()
+        x, y = pyautogui.position()
+        ret = (x, y) if label_count == 1 else [(x, y)]
+        return (ret, False) if found else ret
     elif label_count > 1:
         return xy_list
 

@@ -51,6 +51,7 @@ def open_page(urls: list, delay: int = 2, sumaho: bool = False, paste=False) -> 
                     pyautogui.hotkey("ctrl", "v")
                     time.sleep(0.5)
                     move_and_click(1170, 100)
+                    time.sleep(0.5)
 
                 pyautogui.press("F5")
                 time.sleep(delay)  # 指定された遅延時間だけ待機
