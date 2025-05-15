@@ -28,6 +28,9 @@ def open_page(urls: list, delay: int = 2, sumaho: bool = False, paste=False) -> 
     """
     if isinstance(urls, str):
         urls = [urls]
+
+    if search_color(51,51,51,1090,680):
+        move_and_click(1090,680)
     for url in urls:
         logger.debug(f"open page: {url}")
         try:
