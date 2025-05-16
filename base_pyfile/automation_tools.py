@@ -257,7 +257,7 @@ def search_color(
         color = image[y, x]
 
     if time.time() - start_time > click:
-        return False
+        return (R, G, B) == (color[2], color[1], color[0])
 
     move_and_click(x, y, t=0)
     return (R, G, B) == (color[2], color[1], color[0])
