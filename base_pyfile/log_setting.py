@@ -54,7 +54,7 @@ def get_log_handler(
         log_file_name = f"{LOG_LEVEL_NAMES[log_level]}_{file_path.stem}.log"
         log_file_path = log_folder_path / log_file_name
         logger.info(f"ログファイルを作成: {log_file_path}")
-        handler = FileHandler(filename=log_file_path)
+        handler = FileHandler(filename=log_file_path, encoding='utf-8')
 
     # ログフォルダが指定されない場合、標準出力に出力
     else:

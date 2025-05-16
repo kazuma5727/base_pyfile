@@ -72,7 +72,10 @@ def get_urls(url: str, web=False) -> list:
         if not isinstance(web, int):
             web = 0
         for current_url in current_urls:
-            open_page(current_url, delay=web)
+            if "https://" in current_url:
+                open_page(current_url, delay=web)
+            else:
+                current_urls.remove(current_url) 
     return current_urls
 
 
