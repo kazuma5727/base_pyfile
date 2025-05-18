@@ -250,7 +250,7 @@ def search_color(
 
     while (
         not (R, G, B) == (color[2], color[1], color[0])
-        and time.time() - start_time < click
+        and time.time() - start_time <= click
     ):
         time.sleep(0.5)
         image = cv2.cvtColor(np.array(pyautogui.screenshot()), cv2.COLOR_RGB2BGR)
