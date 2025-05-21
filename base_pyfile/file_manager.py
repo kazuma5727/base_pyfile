@@ -140,7 +140,7 @@ def backup_file(file_path: Union[str, Path], date_string=True) -> None:
         backup_file_path = file_path.parent / "backup" / f"{file_path.stem}_backup{{}}.txt"
 
     else:
-        date_string = current_datetime.strftime("%y年%m月%d日")
+        date_string = current_datetime.strftime("%y-%m-%d")
         # バックアップフォルダを作成し、そこに日付を入れたファイル名で保存
         backup_file_path = (
             file_path.parent / "backup" / f"{file_path.stem}_{date_string}_backup{{}}.txt"
