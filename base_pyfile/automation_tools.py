@@ -176,6 +176,7 @@ def search_color(
     xy: Union[Tuple[int, int], List[int], int] = pyautogui.position(),
     y: int = None,
     click: int = 0,
+    image: np.ndarray = None,
 ) -> Union[bool, Tuple[int, int, int]]:
     """
     指定された座標の色が与えられたRGB値と一致するかを確認する。
@@ -230,8 +231,11 @@ def search_color(
             "xyは、タプル、リスト、またはx座標を表す整数でなければなりません。"
         )
 
+    if image is None:
+        image = cv2.cvtColor(np.array(pyautogui.screenshot()), cv2.COLOR_RGB2BGR)
+    elif isinstance(image, (str, Path)):
+        image = cv2.imread(str(image))
     # スクリーンショットを取得し、BGR形式に変換
-    image = cv2.cvtColor(np.array(pyautogui.screenshot()), cv2.COLOR_RGB2BGR)
 
     # 指定された座標の色を取得
     color = image[y, x]
