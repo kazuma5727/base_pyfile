@@ -1,13 +1,13 @@
 {
     "router": {
         "preferred": "tev1:0.8b",
-        "fallback": ["qwen2.5:0.5b"],
+        "fallback": ["qwen2.5:0.5b", "qwen3.5:9b"],
         "safe_target": "deepseek-r1:1.5b",
         "default_target": "qwen2.5:0.5b"
     },
     "agent": {
-        "model": "qwen3.8:27b",
-        "fallback": ["qwen2.5-coder:3b", "deepseek-r1:1.5b", "qwen2.5:0.5b", "tev1:0.8b"],
+        "model": "qwen3.8:latest",
+        "fallback": ["gemma4:26b", "qwen2.5-coder:3b", "deepseek-r1:1.5b", "glm-5.3-flash:cloud"],
         "max_steps": 8,
         "execute": "subprocess",
         "work_dir": "workspace",
@@ -49,6 +49,87 @@
             "weaknesses": ["応答速度", "メモリ消費", "雑談"],
             "best_for": ["プログラムの作成", "コードレビュー", "エラー修正", "技術的な質問"],
             "avoid_for": ["高速な単純判定"]
+        },
+        {
+            "name": "llava:latest",
+            "role": "vision_light",
+            "description": "軽量なマルチモーダルモデル。画像の基本認識や説明向け。",
+            "strengths": ["画像認識", "画像内のテキスト抽出", "軽量視覚タスク"],
+            "weaknesses": ["複雑な空間認識", "高度な推論"],
+            "best_for": ["簡単な画像説明", "オブジェクト検出"],
+            "avoid_for": ["複雑なグラフ解析", "高度な論理推論"]
+        },
+        {
+            "name": "llama3.2-vision:latest",
+            "role": "vision_standard",
+            "description": "高性能な視覚・言語両用モデル。グラフやレイアウトの理解に強み。",
+            "strengths": ["高度な画像理解", "グラフ・チャート解析", "視覚的推論"],
+            "weaknesses": ["ローカル実行時の高負荷"],
+            "best_for": ["ドキュメント解析", "複雑な画像の説明", "視覚情報を伴うQ&A"],
+            "avoid_for": ["超高速なテキスト応答"]
+        },
+        {
+            "name": "gpt-oss:20b",
+            "role": "heavy_general",
+            "description": "大規模なオープンソース汎用モデル。高い言語理解力を持つ。",
+            "strengths": ["豊かな文脈理解", "長文生成", "高度なテキスト処理"],
+            "weaknesses": ["メモリ消費大", "応答速度"],
+            "best_for": ["創造的なライティング", "複雑な指示の解釈", "長編の要約"],
+            "avoid_for": ["リソースの限られた環境での常駐"]
+        },
+        {
+            "name": "qwen3.5:9b",
+            "role": "mid_balanced",
+            "description": "速度と賢さのバランスが優れた中規模汎用モデル。",
+            "strengths": ["多言語対応", "優れた汎用性能", "適切な応答速度"],
+            "weaknesses": ["特化型モデル（コード/推論）には一歩劣る"],
+            "best_for": ["一般的な会話", "構造化データの生成", "中規模タスクの処理"],
+            "avoid_for": ["超軽量タスク"]
+        },
+        {
+            "name": "gemma4:12b",
+            "role": "mid_expert",
+            "description": "Google系アーキテクチャの中規模モデル。指示追従性が高い。",
+            "strengths": ["指示の正確な実行", "論理タスク", "構造化出力"],
+            "weaknesses": ["メモリ消費"],
+            "best_for": ["プロンプトに忠実な処理", "エージェントのサブ脳"],
+            "avoid_for": ["超高速・短文判定"]
+        },
+        {
+            "name": "gemma4:26b",
+            "role": "heavy_expert",
+            "description": "Google系の大型フラグシップモデル。複雑なタスクや推論を強力にこなす。",
+            "strengths": ["トップクラスの知能", "複雑な命令の実行", "高度な知識"],
+            "weaknesses": ["18GBの大容量（メモリ負荷）", "応答速度"],
+            "best_for": ["難解な問題解決", "メインエージェントのバックアップ"],
+            "avoid_for": ["リソースが逼迫している時の実行"]
+        },
+        {
+            "name": "muse-glimmer:latest",
+            "role": "heavy_creative",
+            "description": "クリエイティブ表現や長文コンテキストに特化した大容量モデル。",
+            "strengths": ["表現力", "クリエイティブライティング", "深い文脈の維持"],
+            "weaknesses": ["18GBの大容量", "厳密なロジック判定"],
+            "best_for": ["小説・シナリオ作成", "ブレインストーミング", "ニュアンスの富んだ対話"],
+            "avoid_for": ["コード生成", "数学的推論"]
+        },
+        {
+            "name": "glm-5.3-flash:cloud",
+            "role": "cloud_flash",
+            "description": "API経由で動作する超高速・低遅延のクラウドモデル。ローカルリソースを消費しない。",
+            "strengths": ["ローカルメモリ消費ゼロ", "超高速処理", "長いコンテキスト"],
+            "weaknesses": ["インターネット接続が必須", "プライバシー制限"],
+            "best_for": ["ローカルVRAMが足りない時の退避先", "長文の一括処理"],
+            "avoid_for": ["完全オフライン環境での運用"]
+        },
+        {
+            "name": "qwen3.8:latest",
+            "role": "heavy_agent",
+            "description": "エージェント運用に最適化された最新の大型高性能モデル。",
+            "strengths": ["エージェント機能", "ツール利用", "関数呼び出し", "総合知能"],
+            "weaknesses": ["17GBのメモリ消費"],
+            "best_for": ["メインAgentとしての自律稼働", "ワークフローの自動実行"],
+            "avoid_for": ["単純なキーワードの振り分け"]
         }
     ]
 }
