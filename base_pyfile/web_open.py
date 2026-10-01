@@ -90,7 +90,7 @@ def open_page(
     return len(urls)
 
 
-def get_urls_from_page(url: str, open_in_browser: bool = False, delay: int = 1) -> List[str]:
+def get_urls(url: str, open_in_browser: bool = False, delay: int = 1) -> List[str]:
     """指定URLのHTMLから全てのリンク(href)を抽出します。
 
     Args:
@@ -145,7 +145,7 @@ if __name__ == "__main__":
     # open_page(["https://www.youtube.com", "https://www.itmedia.co.jp"], smartphone_mode=True)
 
     # 3. ページからURLを抽出し、それらをブラウザで開く
-    # urls = get_urls_from_page("https://www.itmedia.co.jp/news/", open_in_browser=True, delay=2)
+    # urls = get_urls("https://www.itmedia.co.jp/news/", open_in_browser=True, delay=2)
     # print(f"抽出したURLの数: {len(urls)}")
 
     # 4. タブを3つ閉じる

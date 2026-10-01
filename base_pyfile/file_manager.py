@@ -135,7 +135,7 @@ def write_file(
         logger.error(f"'{file_path}' への書き込みに失敗しました: {e}")
     return file_path
 
-def backup_file(file_path: Union[str, Path}, use_datestamp: bool = True) -> None:
+def backup_file(file_path: Union[str, Path], use_datestamp: bool = True) -> None:
     """指定されたファイルのバックアップを作成します。
 
     バックアップは、元のファイルと同じディレクトリ内の `backup` サブディレクトリに、

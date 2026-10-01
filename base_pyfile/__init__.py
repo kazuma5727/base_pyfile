@@ -1,3 +1,19 @@
+from base_pyfile.ai_clipboard import (
+    paste_answer,
+    process_clipboard_once,
+    watch_clipboard,
+)
+from base_pyfile.ai_router import (
+    dispatch,
+    generate,
+    get_available_profiles,
+    is_model_installed,
+    list_installed_models,
+    load_model_profiles,
+    resolve_model,
+    route_to_model,
+)
+from base_pyfile.agent import run_agent, run_repl
 from base_pyfile.automation_tools import (
     fast_click,
     full_templatematching,
@@ -35,6 +51,19 @@ from base_pyfile.web_open import get_urls, open_page, tab_delete
 # from base_pyfile.scraping import download_image
 
 __all__ = [
+    "run_agent",
+    "run_repl",
+    "dispatch",
+    "generate",
+    "get_available_profiles",
+    "is_model_installed",
+    "list_installed_models",
+    "load_model_profiles",
+    "resolve_model",
+    "route_to_model",
+    "paste_answer",
+    "process_clipboard_once",
+    "watch_clipboard",
     "fast_click",
     "full_templatematching",
     "learning_materials",

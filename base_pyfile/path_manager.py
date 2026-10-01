@@ -1,1 +1,380 @@
-"""ファイルパス操作と管理に関するユーティリティ関数を提供します。\n\nディレクトリの作成、ファイルやフォルダの再帰的な検索、一意なファイルパスの生成、\nファイル名の無害化（サニタイズ）など、パスに関連する定型的な処理をまとめたモジュールです。\n"""\n\n# --- 標準ライブラリのインポート ---\nimport os\nimport re\nimport shutil\nfrom functools import cache\nfrom logging import NullHandler, getLogger\nfrom pathlib import Path\nfrom typing import List, Optional, Union\n\n# --- 外部ライブラリのインポート ---\ntry:\n    # natsortをインポートして、より自然な順序でファイル名をソート\n    from natsort import natsorted\nexcept ImportError:\n    # 利用できない場合は標準のsortedを使用\n    natsorted = sorted\n\n# --- 独自モジュールのインポート ---\nfrom base_pyfile.log_setting import get_log_handler, make_logger\n\n# --- ロガーの初期設定 ---\nlogger = getLogger("log").getChild(__name__)\nlogger.addHandler(NullHandler())\n\n# --- グローバル変数 ---\n# unique_path関数で、ファイルごとの連番カウンターを保持するために使用\nexisting_files = {}\n\n\ndef unique_path(\n    file_path: Union[str, Path],\n    counter: int = 1,\n    suffix: str = "_",\n    existing_text: Optional[str] = None,\n    existing_image=None, # np.ndarrayを想定\n) -> Path:\n    """一意なファイルパスを生成します。\n\n    指定されたパスが既に存在する場合、ファイル名の末尾に連番を付加して、\n    重複しない新しいパスを返します。テキストや画像の内容を比較して、\n    全く同じファイルが既に存在するかを判定する機能も持ちます。\n\n    Args:\n        file_path (Union[str, Path]): 対象のファイルパス。\n        counter (int, optional): 連番の初期値。デフォルトは1。\n        suffix (str, optional): ファイル名と連番を繋ぐ接尾辞。デフォルトは"_"。\n        existing_text (Optional[str], optional): Noneでない場合、既存ファイルの内容がこのテキストと\n                                               同一か比較します。同一なら既存パスを返します。\n        existing_image (np.ndarray, optional): Noneでない場合、既存画像がこの画像データと\n                                                 同一か比較します。同一なら既存パスを返します。\n\n    Returns:\n        Path: 重複しないことが保証されたPathオブジェクト。\n    """\n    global existing_files\n    file_path = Path(file_path)\n\n    # 初めて処理するパスの場合、カウンターを初期化\n    if str(file_path) not in existing_files:\n        existing_files[str(file_path)] = counter\n\n    base, ext = file_path.stem, file_path.suffix\n\n    # パスに連番用のプレースホルダ `{}` が含まれているかチェック\n    has_placeholder = "{}" in base\n\n    # パスが存在しなくなるまで、または同一内容のファイルが見つかるまでループ\n    while True:\n        current_counter = existing_files[str(file_path)]\n        if has_placeholder:\n            # プレースホルダがある場合は、カウンターでフォーマット\n            test_path = Path(file_path.parent, str(file_path.name).format(current_counter))\n        else:\n            # プレースホルダがない場合は、`{suffix}{counter}` を挿入\n            test_path = Path(file_path.parent, f"{base}{suffix}{current_counter}{ext}")\n\n        # パスが存在しない場合は、ループを抜けてそのパスを返す\n        if not test_path.exists():\n            break\n\n        # --- 同一内容のファイルが存在するかチェック ---\n        if existing_text is not None:\n            from base_pyfile.file_manager import read_text_file # 循環参照を避ける\n            if read_text_file(test_path) == existing_text:\n                logger.info(f"同一内容のテキストファイルが既に存在します: {test_path}")\n                return test_path\n\n        if existing_image is not None:\n            try:\n                import cv2\n                import numpy as np\n                existing_img_data = cv2.imread(str(test_path))\n                if existing_img_data is not None and np.array_equal(existing_img_data, existing_image):\n                    logger.info(f"同一内容の画像ファイルが既に存在します: {test_path}")\n                    return test_path\n            except ImportError:\n                logger.warning("OpenCVが利用できないため、画像内容は比較できません。")\n\n        # パスが存在し、内容も異なる場合はカウンターをインクリメント\n        existing_files[str(file_path)] += 1\n\n    # 親ディレクトリが存在しない場合は作成\n    make_directory(test_path.parent)\n    return test_path\n\n\n@cache\ndef _make_directory(directory: Path):\n    """ディレクトリを作成する内部関数。@cacheで結果をキャッシュします。"""\n    directory.mkdir(parents=True, exist_ok=True)\n    logger.debug(f"ディレクトリを作成しました: {directory}")\n\n\ndef make_directory(path: Union[str, Path]) -> Path:\n    """指定されたパスのディレクトリ部分を確実に作成します。\n\n    ファイルパスが渡された場合はその親ディレクトリを、ディレクトリパスが\n    渡された場合はそのディレクトリ自身を作成します。\n\n    Args:\n        path (Union[str, Path]): ファイルパスまたはディレクトリパス。\n\n    Returns:\n        Path: 入力されたパスのPathオブジェクト。\n    """\n    path_obj = Path(path)\n    # パスがファイルと見なせる場合（拡張子があるなど）は親ディレクトリを対象とする\n    if path_obj.suffix:\n        directory = path_obj.parent\n    else:\n        directory = path_obj\n    _make_directory(directory.absolute())\n    return path_obj\n\n\ndef get_files(directory: Union[str, Path], choice_key: str = "") -> List[Path]:\n    """指定ディレクトリ直下のファイルリストを取得します。\n\n    Args:\n        directory (Union[str, Path]): 検索対象のディレクトリ。\n        choice_key (str, optional): ファイル名に含むべき文字列。指定しない場合は全ファイル。\n\n    Returns:\n        List[Path]: 条件に一致したファイルのPathオブジェクトのリスト。\n    """\n    directory = Path(directory).resolve()\n    if not directory.is_dir():\n        return []\n    return [f for f in natsorted(directory.iterdir()) if f.is_file() and choice_key in f.name]\n\n\ndef get_all_subfolders(directory: Union[str, Path], depth: Optional[int] = None) -> List[Path]:\n    """指定ディレクトリ以下の全てのサブフォルダを再帰的に取得します。\n\n    Args:\n        directory (Union[str, Path]): 検索の起点となるディレクトリ。\n        depth (Optional[int], optional): 検索する階層の深さ。Noneの場合は無制限。\n\n    Returns:\n        List[Path]: 発見されたサブフォルダのPathオブジェクトのリスト。\n    """\n    directory = Path(directory).resolve()\n    if not directory.is_dir():\n        return []\n\n    all_folders = []\n    # globパターンで効率的にフォルダを検索\n    # `**/` は0階層以上の任意のディレクトリにマッチする\n    for item in directory.glob("**/*"):\n        if item.is_dir():\n            # 深さ制限のチェック\n            if depth is not None:\n                relative_depth = len(item.relative_to(directory).parts)\n                if relative_depth > depth:\n                    continue\n            all_folders.append(item)\n    return natsorted(all_folders)\n\n\ndef get_all_files(\n    directory: Union[str, Path], choice_key: str = "", depth: Optional[int] = None\n) -> List[Path]:\n    """指定ディレクトリ以下の全てのファイルを再帰的に取得します。\n\n    Args:\n        directory (Union[str, Path]): 検索の起点となるディレクトリ。\n        choice_key (str, optional): ファイル名に含むべき文字列。指定しない場合は全ファイル。\n        depth (Optional[int], optional): 検索する階層の深さ。Noneの場合は無制限。\n\n    Returns:\n        List[Path]: 条件に一致したファイルのPathオブジェクトのリスト。\n    """\n    directory = Path(directory).resolve()\n    if not directory.is_dir():\n        return []\n\n    all_files = []\n    # globパターンで効率的にファイルを検索\n    for item in directory.glob("**/*"):\n        if item.is_file() and choice_key in item.name:\n            # 深さ制限のチェック\n            if depth is not None:\n                relative_depth = len(item.relative_to(directory).parts) - 1\n                if relative_depth > depth:\n                    continue\n            all_files.append(item)\n\n    if natsorted == sorted:\n        logger.warning("natsortライブラリが未導入のため、ファイル順序が期待通りでない可能性があります。")\n    return natsorted(all_files)\n\n\ndef find_empty_folders(folder_list: Union[str, Path, List[Union[str, Path]]]) -> List[Path]:\n    """指定されたフォルダリストの中から、空のフォルダを検出します。\n\n    Args:\n        folder_list (Union[str, Path, List[Union[str, Path]]]): 調査対象のフォルダパス、またはそのリスト。\n\n    Returns:\n        List[Path]: 空だったフォルダのPathオブジェクトのリスト。\n    """\n    if isinstance(folder_list, (str, Path)):\n        folder_list = [Path(folder_list)]\n    else:\n        folder_list = [Path(f) for f in folder_list]\n\n    empty_folders = []\n    for folder in folder_list:\n        if folder.is_dir() and not any(folder.iterdir()):\n            empty_folders.append(folder)\n    return empty_folders\n\n\ndef sanitize_windows_filename(path: Union[str, Path]) -> Path:\n    """Windowsのファイル名として不正な文字を全角文字に置換（サニタイズ）します。\n\n    Windowsの予約名を避ける処理も行います。\n\n    Args:\n        path (Union[str, Path]): サニタイズ対象のパス。\n\n    Returns:\n        Path: サニタイズ後のPathオブジェクト。\n    """\n    path = Path(path)\n    filename = path.stem\n    extension = path.suffix\n\n    # Windowsファイル名として使用できない文字とその置換先\n    # パス区切り文字 `\` `/` は対象外\n    invalid_chars = {\n        "<": "＜", ">": "＞", ":": "：", "\"": "”", "|": "｜", "?": "？", "*": "＊"\n    }\n    for char, replacement in invalid_chars.items():\n        filename = filename.replace(char, replacement)\n\n    # 前後の空白を除去\n    filename = filename.strip()\n\n    # Windows予約語のチェック (大文字小文字を区別しない)\n    reserved_names = (\n        "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5",\n        "COM6", "COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4",\n        "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"\n    )\n    if filename.upper() in reserved_names:\n        filename += "_file"\n\n    return path.with_name(filename + extension)\n\n\ndef get_latest_folder(directory: Union[str, Path]) -> Optional[Path]:\n    """指定ディレクトリ内で最も更新日時が新しいフォルダを取得します。\n\n    Args:\n        directory (Union[str, Path]): 検索対象のディレクトリ。\n\n    Returns:\n        Optional[Path]: 最も新しいフォルダのPathオブジェクト。フォルダがない場合はNone。\n    """\n    directory = Path(directory)\n    folders = [f for f in directory.iterdir() if f.is_dir()]\n    if not folders:\n        return None\n\n    latest_folder = max(folders, key=lambda f: f.stat().st_mtime)\n    return latest_folder.absolute()\n\n\nif __name__ == "__main__":\n    logger = make_logger(handler=get_log_handler(10))\n\n    # --- テスト用のディレクトリ構造を作成 ---\n    test_root = Path("./test_path_manager")\n    if test_root.exists():\n        shutil.rmtree(test_root)\n    dir_a = test_root / "dir_a"\n    dir_b = test_root / "dir_b" / "dir_b_1"\n    empty_dir = test_root / "empty"\n    make_directory(dir_a)\n    make_directory(dir_b)\n    make_directory(empty_dir)\n    (dir_a / "file1.txt").touch()\n    (dir_a / "file2.log").touch()\n    (dir_b / "file3.txt").touch()\n    (test_root / "root_file.txt").touch()\n\n    print(f"--- テストディレクトリ: {test_root.resolve()} ---")\n\n    # --- 各関数のテスト実行 ---\n    print("\n[get_files]")\n    print(get_files(dir_a, choice_key=".txt"))\n\n    print("\n[get_all_subfolders]")\n    print(get_all_subfolders(test_root))\n\n    print("\n[get_all_files]")\n    print(get_all_files(test_root, choice_key=".txt"))\n\n    print("\n[find_empty_folders]")\n    print(find_empty_folders([test_root, dir_a, dir_b, empty_dir]))\n\n    print("\n[sanitize_windows_filename]")\n    print(sanitize_windows_filename("C:/test/a<b>c:d\"e.txt"))\n    print(sanitize_windows_filename("COM1.txt"))\n\n    print("\n[unique_path]")\n    unique_file = test_root / "unique_test.txt"\n    unique_file.touch()\n    print(unique_path(unique_file))\n    print(unique_path(test_root / "new_unique_{}.log"))\n\n    # --- 後片付け ---\n    # shutil.rmtree(test_root)\n    print(f"\nテスト完了。'{test_root}' を確認してください。")\n
+import os
+import re
+from functools import cache
+from logging import NullHandler, getLogger
+from pathlib import Path
+from typing import List, Optional, Union
+
+try:
+    from natsort import natsorted
+except ImportError:
+    natsorted = sorted
+
+from base_pyfile.log_setting import get_log_handler, make_logger
+
+logger = getLogger("log").getChild(__name__)
+logger.addHandler(NullHandler())
+
+existing_files = {}
+
+def unique_path(
+    file_path: str,
+    counter: int = 1,
+    suffix: Optional[str] = "_",
+    existing_text: Optional[str] = "",
+    existing_image=None,
+) -> str:
+    """ファイルパスを連番にする関数
+    Args:
+        file_path (str): ファイルパス
+        counter (int): ファイルパスの接尾辞に付く連番
+        suffix (Optional[str]): ファイルパスの接尾辞の文字列
+        existing_text (Optional[str]): 既存のテキストファイルが存在する場合、ファイルが同じであるかを確認するための文字列
+        existing_image (Optional[np.ndarray]): 既存の画像ファイルが存在する場合、ファイルが同じであるかを確認するためのndarray
+
+    Returns:
+        str: 一意になったファイルパス
+    """
+    global existing_files
+
+    # Pathオブジェクトの場合、文字列に変換する
+    if isinstance(file_path, Path):
+        file_path = file_path.as_posix()
+    else:
+        file_path = str(file_path)
+
+    # すでに存在するファイルのリストにファイルパスを追加する
+    if file_path not in existing_files:
+        existing_files[file_path] = counter
+
+    # ファイル名と拡張子を分離する
+    base, ext = os.path.splitext(file_path)
+
+    # ファイル名が存在しない場合、そのまま返す
+    if not re.findall(r"{.*?}", file_path):
+        new_path = base + suffix + "{}" + ext
+        check_path = base + "{}" + ext
+        return_path = file_path
+    else:
+        new_path = file_path
+        check_path = file_path
+        return_path = file_path.format(existing_files[file_path])
+        
+    # パスが存在しない場合、ディレクトリを作成して返す
+    if not (
+        os.path.exists(new_path.format(""))
+        or os.path.exists(new_path.format(existing_files[file_path]))
+        or os.path.exists(check_path.format(""))
+        or os.path.exists(check_path.format(existing_files[file_path]))
+    ):
+        logger.debug(f"path先に{return_path}ファイルはありませんでした")
+        if ext:
+            make_directory(os.path.dirname(return_path))
+        else:
+            make_directory(return_path)
+        return return_path
+
+    while os.path.exists(new_path.format(existing_files[file_path])) or os.path.exists(
+        new_path.format("")
+    ):
+        if existing_text:
+            # 同一テキストファイル確認
+            try:
+                if new_path.format(existing_files[file_path]) and existing_text:
+                    from file_manager import read_text_file
+
+                    before_text = read_text_file(
+                        new_path.format(existing_files[file_path])
+                    )
+                    if before_text == existing_text:
+                        logger.info("同じテキストがあります")
+                        return new_path.format(existing_files[file_path])
+            except ImportError:
+                logger.error("module_pathが通っていない可能性があります")
+
+        if existing_image:
+            # 同一画像ファイル確認
+            try:
+                import cv2
+                import numpy as np
+
+                if new_path.format(existing_files[file_path]) and isinstance(
+                    existing_image, np.ndarray
+                ):
+                    if np.array_equal(
+                        cv2.imread(new_path.format(existing_files[file_path])),
+                        existing_image,
+                    ):
+                        logger.info("同じ画像があります")
+                        return new_path.format(existing_files[file_path])
+            except ImportError:
+                logger.warning("画像検索できません")
+
+        existing_files[file_path] += 1
+    if ext:
+        make_directory(os.path.dirname(new_path.format(existing_files[file_path])))
+    else:
+        make_directory(new_path.format(existing_files[file_path]))
+
+    return new_path.format(existing_files[file_path])
+
+
+@cache
+def _make_directory(directory):
+    directory.mkdir(parents=True, exist_ok=True)
+    logger.debug(f"{directory}のディレクトリを作成しました")
+
+
+def make_directory(path):
+    """指定されたパスのディレクトリを作成します。
+
+    Args:
+        path (str or Path): 作成するディレクトリのパス
+
+    Returns:
+        str or Path: 渡されたパスをそのまま返します。
+    """
+    path_obj = Path(path)
+    if "." in path_obj.name:
+        directory = path_obj.parent.absolute()
+    else:
+        directory = path_obj.absolute()
+    _make_directory(directory)
+
+    return path_obj
+
+
+def get_files(directory: Path, choice_key: str = "") -> List[Path]:
+    """フォルダー内にあるすべてのファイルを絶対パスでリストとして返す。
+
+    Args:
+        directory (Path): ファイルまたはフォルダーの絶対パス
+        choice_key (str): ファイル名に含まれる必要のあるキーワード
+
+    Returns:
+        List[Path]: ファイルパスのリスト。choice_keyが指定されている場合は、キーワードが含まれるファイルのみをリスト化する。
+    """
+    # 絶対パスを取得する
+    directory = Path(directory).resolve()
+
+    return (
+        [
+            files
+            for files in natsorted(directory.iterdir())
+            if files.is_file() and choice_key in files.name
+        ]
+        if directory.is_dir()
+        else [directory]
+        if directory.is_file() and choice_key in directory.name
+        else []
+    )
+
+
+def get_all_subfolders(
+    directory: Union[str, Path], depth: Optional[int] = None
+) -> List[Path]:
+    """
+    指定されたディレクトリ以下の全てのフォルダを再帰的に検索し、
+    フォルダパスのリストを返す。
+
+    Args:
+        directory (Union[str, Path]): 検索対象のディレクトリパス
+        depth (Optional[int]): 検索する階層数。Noneの場合、全階層を検索する。
+
+    Returns:
+        List[Path]: ディレクトリパスのリスト（自然順にソートされている）
+    """
+
+    def get_subfolders(directory: Path, depth: Optional[int]) -> List[Path]:
+        """
+        指定されたディレクトリ以下のフォルダを再帰的に検索し、
+        フォルダパスのリストを返す。
+
+        Args:
+            directory (Path): 検索対象のディレクトリパス
+            depth (Optional[int]): 検索する階層数。Noneの場合、全階層を検索する。
+
+        Returns:
+            List[Path]: ディレクトリパスのリスト
+        """
+        subfolders = []
+        for entry in directory.iterdir():
+            if entry.is_dir():
+                if depth is None or depth >= 1:
+                    subfolders.extend(
+                        get_subfolders(entry, depth - 1 if depth else None)
+                    )
+                subfolders.append(entry)
+
+        return subfolders
+
+    directory = Path(directory).resolve()
+    return natsorted(get_subfolders(directory, depth)) if directory.is_dir() else []
+
+
+def get_all_files(
+    directory: Union[str, Path], choice_key: str = "", depth: Optional[int] = None
+) -> List[Path]:
+    """
+    指定されたディレクトリ以下の全てのファイルを再帰的に検索し、
+    ファイルパスのリストを返す。
+
+    Args:
+        directory (Union[str, Path]): 検索対象のディレクトリパス
+        choice_key (str): ファイル名に含まれる必要のあるキーワード
+        depth (Optional[int]): 検索する階層数。Noneの場合、全階層を検索する。
+
+    Returns:
+        List[Path]: ファイルパスのリスト（自然順にソートされている）
+    """
+    file_paths = get_files(directory, choice_key=choice_key)
+    for folder in get_all_subfolders(directory, depth):
+        files = get_files(folder, choice_key=choice_key)
+        # ファイルだけを抽出する
+        file_paths.extend(files)
+
+    if natsorted == sorted:
+        logger.warning("sort関数を使用しているため、予期せぬ並び順になっている場合があります")
+    return natsorted(file_paths)
+
+
+def get_folders_and_files(directory: Union[str, Path]) -> List[Path]:
+    """
+    指定されたディレクトリに入っているフォルダとファイルをリストで返す。
+    Args:
+        directory (Union[str, Path]): フォルダパスを表す文字列またはPathオブジェクト
+
+    Returns:
+        list[Path]: フォルダおよびファイルのパスを表すPathオブジェクトのリスト
+    """
+    directory = Path(directory).resolve()
+    return get_all_subfolders(directory, 0) + get_files(directory)
+
+
+def find_empty_folders(
+    folder_list: Union[str, Path, List[Union[str, Path]]]
+) -> List[Path]:
+    """
+    渡されたフォルダのリストから、空のフォルダを探してリストで返す。
+
+    Args:
+        folder_list (Union[str, Path, List[Union[str, Path]]]): 調査するフォルダのリスト
+
+    Returns:
+        List[Path]: 空のフォルダのリスト
+    """
+    # フォルダがリストでない場合、リストに変換する
+    if isinstance(folder_list, (str, Path)):
+        folder_list = [folder_list]
+
+    empty_folders = []
+    for folder in folder_list:
+        folder = Path(folder)
+        if not get_folders_and_files(folder):
+            empty_folders.append(folder)
+    return empty_folders
+
+
+def sanitize_windows_filename(non_regular_path: Union[str, Path]) -> Path:
+    """
+    Windowsのファイル名として不正な文字を正規化します。
+
+    Args:
+        non_regular_path (Union[str, Path]): 正規化する前のパス（文字列またはPathオブジェクト）
+
+    Returns:
+        Path: 不正な文字が正規化された後のパス（Pathオブジェクト）
+
+    使用例:
+        >>> sanitize_windows_filename("C:/Users/User/Documents<>file.txt")
+        PosixPath('C:/Users/User/Documents＜＞file.txt')
+    """
+
+    # 不正な文字を正規な文字に置換するための変換テーブルを作成します
+    translation_table = str.maketrans(
+        {
+            "<": "＜",
+            ">": "＞",
+            ":": "：",
+            '"': "”",
+            # "/": "／",
+            # "\\": "＼",
+            "|": "｜",
+            "?": "？",
+            "*": "＊",
+        }
+    )
+
+    # 入力のパス文字列をPathオブジェクトに変換します
+    non_regular_path = Path(non_regular_path)
+
+    # ファイル名の不正な文字を置換して、正規のファイル名を取得します
+    regular_path = Path((non_regular_path.stem).translate(translation_table).strip())
+    base_name = regular_path.stem
+
+    # 特定の文字列はWindowsファイルシステムで予約されており、ファイル名として使用できないため、
+    # 予約された文字列の場合は"_file"を付加して回避します
+    if base_name.upper() in [
+        "CON",
+        "PRN",
+        "AUX",
+        "NUL",
+        "COM1",
+        "COM2",
+        "COM3",
+        "COM4",
+        "COM5",
+        "COM6",
+        "COM7",
+        "COM8",
+        "COM9",
+        "LPT1",
+        "LPT2",
+        "LPT3",
+        "LPT4",
+        "LPT5",
+        "LPT6",
+        "LPT7",
+        "LPT8",
+        "LPT9",
+    ]:
+        base_name += "_file"
+
+    # 置換と予約文字列の処理を終えた正規化されたファイル名を元のパスと結合して、
+    # 不正な文字を置換した正規化されたパスを取得します
+    sanitized_path = non_regular_path.with_name(base_name + non_regular_path.suffix)
+
+    return non_regular_path.parent / sanitized_path
+
+
+def get_latest_folder(directory: str) -> Path:
+    """
+    指定されたディレクトリ内で最も最近更新されたフォルダーの絶対パスを取得します。
+
+    Parameters:
+        directory (str): 最も最近のフォルダーを検索するディレクトリのパス。
+
+    Returns:
+        Path: 最も最近更新されたフォルダーの絶対パス。
+    """
+    # フォルダーのリストを取得
+    directory_path = Path(directory)
+    folders = [folder for folder in directory_path.iterdir() if folder.is_dir()]
+
+    # フォルダーの更新時刻を取得して最も新しいものを見つける
+    latest_folder = max(folders, key=lambda folder: folder.stat().st_mtime)
+
+    # 最も新しいフォルダーの絶対パスを返す
+    return latest_folder
+
+
+if __name__ == "__main__":
+    logger = make_logger(handler=get_log_handler(10))
+
+    # sample
+    # print(get_files(r""))
+    # print(get_all_subfolders(r""))
+    directory = Path(r"F:\Lexar")
+
+    for i in get_all_subfolders(directory):
+        print(i)

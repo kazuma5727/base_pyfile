@@ -1,0 +1,54 @@
+{
+    "router": {
+        "preferred": "tev1:0.8b",
+        "fallback": ["qwen2.5:0.5b"],
+        "safe_target": "deepseek-r1:1.5b",
+        "default_target": "qwen2.5:0.5b"
+    },
+    "agent": {
+        "model": "qwen3.8:27b",
+        "fallback": ["qwen2.5-coder:3b", "deepseek-r1:1.5b", "qwen2.5:0.5b", "tev1:0.8b"],
+        "max_steps": 8,
+        "execute": "subprocess",
+        "work_dir": "workspace",
+        "timeout": 60
+    },
+    "models": [
+        {
+            "name": "tev1:0.8b",
+            "role": "router",
+            "description": "超軽量・超高速の短文判定モデル。振り分け判断のルーター本体。",
+            "strengths": ["高速応答", "1文字・短文出力", "ラベル分類", "はい/いいえ判定"],
+            "weaknesses": ["長文生成", "複雑な推論", "コーディング", "専門知識"],
+            "best_for": ["LLMの振り分け判断", "クイズの1文字解答", "単純な分類・判定"],
+            "avoid_for": ["長文の要約", "コード生成", "数学・論理推論"]
+        },
+        {
+            "name": "qwen2.5:0.5b",
+            "role": "light",
+            "description": "最小級の汎用モデル。軽い会話や短い言い換えに向く。",
+            "strengths": ["軽量", "汎用会話", "簡易な要約・言い換え"],
+            "weaknesses": ["専門知識", "長文・多段推論", "コーディング"],
+            "best_for": ["簡単な質問応答", "短い文章の整形", "ルーターの代替"],
+            "avoid_for": ["難しい推論", "コード生成"]
+        },
+        {
+            "name": "deepseek-r1:1.5b",
+            "role": "reasoning",
+            "description": "段階的に考える推論に強いモデル。論理・数学問題向け。",
+            "strengths": ["論理推論", "数学", "多段的な思考", "原因分析"],
+            "weaknesses": ["応答速度", "メモリ消費", "コード生成"],
+            "best_for": ["複雑な判断", "数学・論理問題", "多段の推論が必要な問い"],
+            "avoid_for": ["高速な単純判定", "コーディング"]
+        },
+        {
+            "name": "qwen2.5-coder:3b",
+            "role": "code",
+            "description": "コード生成に特化した最大モデル。",
+            "strengths": ["コード生成", "コードの説明", "デバッグ", "リファクタリング"],
+            "weaknesses": ["応答速度", "メモリ消費", "雑談"],
+            "best_for": ["プログラムの作成", "コードレビュー", "エラー修正", "技術的な質問"],
+            "avoid_for": ["高速な単純判定"]
+        }
+    ]
+}
