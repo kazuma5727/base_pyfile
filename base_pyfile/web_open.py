@@ -25,6 +25,16 @@ from base_pyfile.log_setting import get_log_handler, make_logger
 logger = getLogger("log").getChild(__name__)
 logger.addHandler(NullHandler())
 
+# ブラウザUI操作で使う座標・色の定数。
+# 解像度やブラウザのUIが変わった場合はここを調整する。
+POPUP_CLOSE_PROBE_XY = (1090, 680)      # 閉じたいポップアップの確認位置
+POPUP_CLOSE_RGB = (51, 51, 51)          # ポップアップが表示されているときの色
+DEVTOOLS_COLOR_PROBE_XY = (122, 122)    # DevToolsの表示状態を確認する位置
+DEVTOOLS_DARK_RGB = (59, 59, 63)
+DEVTOOLS_LIGHT_RGB = (236, 236, 236)
+DEVICE_TOOLBAR_TOGGLE_XY = (2050, 130)  # スマホ表示切替ボタン
+ADDRESS_BAR_XY = (1270, 60)             # アドレスバー
+
 
 def open_page(
     urls: Union[str, List[str]],
@@ -51,8 +61,8 @@ def open_page(
 
     # 処理の前に、特定のポップアップやダイアログが表示されていたら閉じる試み
     # TODO: この座標(1090, 680)と色(51, 51, 51)が何に対応するのかコメントで説明が必要
-    if search_color(51, 51, 51, xy=(1090, 680)):
-        move_and_click((1090, 680))
+    if search_color(*POPUP_CLOSE_RGB, xy=POPUP_CLOSE_PROBE_XY):
+        move_and_click(POPUP_CLOSE_PROBE_XY)
 
     for url in urls:
         logger.debug(f"ページを開きます: {url}")
@@ -66,17 +76,18 @@ def open_page(
                 time.sleep(2)
                 # TODO: この座標と色が何を示すのか、より具体的な説明が望ましい
                 # 例: "スマホ表示モードの切り替えボタンが有効かチェック"
-                is_dev_tools_ready = search_color(59, 59, 63, xy=(122, 122)) or \
-                                     search_color(236, 236, 236, xy=(122, 122))
+                is_dev_tools_ready = search_color(
+                    *DEVTOOLS_DARK_RGB, xy=DEVTOOLS_COLOR_PROBE_XY
+                ) or search_color(*DEVTOOLS_LIGHT_RGB, xy=DEVTOOLS_COLOR_PROBE_XY)
                 if not is_dev_tools_ready:
-                    move_and_click((2050, 130)) # スマホ表示切替ボタン
+                    move_and_click(DEVICE_TOOLBAR_TOGGLE_XY) # スマホ表示切替ボタン
                     time.sleep(2)
                 pyautogui.press("F5") # ページをリロードして表示を確定
                 time.sleep(delay)
 
             if paste_and_go:
                 pyperclip.copy(url)
-                move_and_click((1270, 60)) # アドレスバーをクリック
+                move_and_click(ADDRESS_BAR_XY) # アドレスバーをクリック
                 pyautogui.hotkey("ctrl", "a")
                 time.sleep(0.5)
                 pyautogui.hotkey("ctrl", "v")
@@ -90,19 +101,22 @@ def open_page(
     return len(urls)
 
 
-def get_urls(url: str, open_in_browser: bool = False, delay: int = 1) -> List[str]:
+def get_urls(
+    url: str, open_in_browser: bool = False, delay: int = 1, timeout: int = 10
+) -> List[str]:
     """指定URLのHTMLから全てのリンク(href)を抽出します。
 
     Args:
         url (str): リンクを抽出したいページのURL。
         open_in_browser (bool, optional): Trueの場合、抽出したURLを順次ブラウザで開きます。デフォルトはFalse。
         delay (int, optional): `open_in_browser`がTrueの場合の、各ページを開く間隔(秒)。デフォルトは1。
+        timeout (int, optional): HTTP取得のタイムアウト秒。デフォルトは10。
 
     Returns:
         List[str]: 抽出されたURLのリスト。
     """
     try:
-        response = requests.get(url)
+        response = requests.get(url, timeout=timeout)
         response.raise_for_status() # HTTPエラーがあれば例外を発生
         soup = BeautifulSoup(response.content, "html.parser")
         # `href`属性を持つ`a`タグからリンクを抽出

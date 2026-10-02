@@ -1,5 +1,112 @@
 # base_pyfile
 便利ツール
+
+---
+
+## AI・エージェント向けクイックリファレンス
+
+このパッケージは **遅延import（lazy import）** 方式です。`import base_pyfile` した時点では軽い読み込みだけを行い、`from base_pyfile import make_logger` のように**名前へアクセスした時点で、対応モジュールだけ**が読み込まれます。そのため、cv2 / pyautogui / PyMuPDF などの重い依存が入っていない環境でも、`log_setting` や `path_manager` だけを安全に使えます。
+
+### AIが守るべき import ルール
+- 必ず `from base_pyfile import <名前>` の形で import する。`from file_manager import ...` のようなモジュール直下の import はパッケージとしては解決されない（過去の名残で、内部で一部使われていたが修正済み）。
+- パッケージ内で相互参照する場合も `from base_pyfile.xxx import yyy` とフルパスで書く。
+- 重い依存が必要な機能（画像・ブラウザ・PDF）は、呼び出し側の関数の中で import してよい（遅延importの推奨パターン）。
+
+### 機能と依存の対応表
+| やりたいこと | importする名前 | 元モジュール | 追加で必要な主な依存 |
+| --- | --- | --- | --- |
+| ログ設定 | `make_logger` / `get_log_handler` | `log_setting` | なし（標準ライブラリのみ） |
+| 実行時間の計測 | `timer` / `logger_timer` | `function_timer` | なし |
+| パス操作・連番 | `unique_path` / `make_directory` / `get_all_files` など | `path_manager` | `natsort`（無くても動作、並び順が劣化） |
+| テキスト読み書き | `read_text_file` / `write_file` | `file_manager` | なし |
+| LLMの振り分け・生成 | `route_to_model` / `dispatch` / `generate` | `ai_router` | `requests` + Ollamaサーバー |
+| クリップボードAI | `watch_clipboard` / `process_clipboard_once` | `ai_clipboard` | `pyperclip`（自動貼付は `pyautogui`） |
+| 誤字脱字の校正 | `correct_text` / `select_model_by_length` | `ai_corrector` | `requests` + Ollamaサーバー |
+| マウス・画像自動化 | `move_and_click` / `search_color` など | `automation_tools` | `opencv-python` `numpy` `pyautogui` `pynput` |
+| ブラウザ操作 | `open_page` / `get_urls` / `tab_delete` | `web_open` | `requests` `beautifulsoup4` `tqdm` `pyautogui` |
+| PDF/TIFF変換 | `pdf_to_png` / `tiff_to_pdf` など | `pdf_tiff_converter` | `PyMuPDF` `Pillow` |
+| エージェント実行 | `run_agent` / `run_repl` | `agent` | **新規作成中（未実装）** |
+
+> `run_agent` / `run_repl` は現在 `base_pyfile/agent.py` を新規作成中です。アクセスするまではエラーになりませんが、モジュールが無い間は import できません。
+
+### 各機能の最小例
+```python
+from base_pyfile import make_logger, unique_path, read_text_file, write_file
+
+logger = make_logger()                 # 標準出力へ。log_folder=".log" でファイル出力
+logger.info("開始")
+
+path = unique_path("out/result_{}.png") # 既存ファイルと衝突しない連番付きパスを返す
+write_file("out/memo.txt", "hello")     # 親ディレクトリを自動作成
+print(read_text_file("out/memo.txt"))  # UTF-8/SJIS等を自動判別
+```
+
+```python
+from base_pyfile import route_to_model, dispatch
+
+# 振り分け先だけを決める（Ollamaが必要）
+model, ms = route_to_model("フィボナッチ数列を返すPython関数を書いて。")
+
+# 振り分けて実行する
+result = dispatch("3人の誕生日が同じになる確率を説明して。")
+print(result["model"], result["answer"])
+```
+
+### 誤字脱字の校正（コピー → 貼り付けで直す）
+`ai_corrector` を使うと、クリップボードの中身を校正してそのまま書き戻せます。使うモデルは **文字数**で決まり、`ai_models.json` の `correction.tiers`（`max_chars` → `model`）で設定します。
+
+```python
+from base_pyfile import correct_text, process_clipboard_once
+
+# テキストを直接校正（失敗時は元のテキストが返り、changed=Falseになる）
+result = correct_text("これはてすとです。")
+print(result["model"], result["corrected"], result["changed"])
+
+# クリップボードを1回だけ校正して書き戻す（そのまま Ctrl+V で直ったテキストが貼れる）
+process_clipboard_once(mode="correct")
+```
+
+```bash
+# クリップボードを監視し、コピーのたびに自動で校正（Ctrl+Cで停止）
+python -m base_pyfile.ai_clipboard correct
+```
+
+- `watch_clipboard(mode="correct")` / `process_clipboard_once(mode="correct")` で校正モードになります（既定は `"answer"` で従来どおり回答生成）。
+- モデルは `select_model_by_length()` が選び、未インストールなら `correction.fallback` → `router.default_target` へ自動で切り替えます。
+- モデルが応答しない場合は **元のテキストをそのまま返します**（クリップボードを壊さない）。`changed` で修正があったかを判定できます。
+- コード・URL・固有名詞は変更しないようプロンプトで指示し、出力を切り詰めないよう `num_predict` を文字数に応じて確保しています。
+
+```json
+"correction": {
+  "min_chars": 1,
+  "tiers": [
+    { "max_chars": 100,  "model": "qwen2.5:0.5b" },
+    { "max_chars": 600,  "model": "qwen3.5:9b" },
+    { "max_chars": 3000, "model": "gpt-oss:20b" },
+    { "max_chars": null, "model": "glm-5.3-flash:cloud" }
+  ],
+  "fallback": ["qwen2.5-coder:3b", "deepseek-r1:1.5b"]
+}
+```
+
+### 動作の要点（AIがハマりやすい点）
+- `make_logger()` を**同じロガー名で複数回呼んでも、ハンドラは置き換え**られ、ログが二重出力されません。`level` 引数が常に優先されます。
+- `get_log_handler()` は `file_path` が実在しなくても動きます。標準外のログレベル（例: 25）でも `LEVEL25` としてファイル名に使え、KeyError になりません。
+- `write_file()` は**拡張子が無いパスにだけ**既定の `.txt` を付けます。`data.json` のように既に拡張子があるパスは尊重し、勝手に `.txt` へ書き換えません。戻り値は書き込み後の `Path` です。
+- `read_text_file()` は存在しないファイルに対して例外を投げず、空文字（または空リスト）を返します。
+- `unique_path()` は「同じパスには同じ接尾辞を再利用」するキャッシュを最大 `path_manager.MAX_EXISTING_FILES`（既定1024）件まで保持し、古いものから捨てます。`reset_existing_files()` で明示的にクリアできます。
+- `make_directory(path, is_file=None)` の `is_file` を省略すると、名前にドットを含むかで自動判定します。ドット入りのフォルダ名など誤判定しうる場合は `is_file=` を明示してください。
+- `ai_router.generate()` のタイムアウト既定は `GENERATE_TIMEOUT`（120秒）です。一覧取得など軽い問い合わせは `LIST_MODELS_TIMEOUT`（5秒）を使います。生成はモデルのロードを含むと時間がかかるため、短いタイムアウトで `answer=None` になりがちでした（修正済み）。
+- `automation_tools.move_and_click()` / `search_color()` は **引数を省略すると「呼び出した瞬間」のマウス位置**を使います（既定値を `None` にして関数内で取得する方式に修正済み）。
+- `web_open` の座標・色は意味のある定数（`DEVICE_TOOLBAR_TOGGLE_XY` など）として `web_open.py` 冒頭にまとめています。解像度やブラウザUIが変わったらそこを調整します。
+- `ai_clipboard.watch_clipboard()` は無限ループです。`stop_after=N` で回数を制限できます。
+
+### テスト
+軽量モジュールの回帰テストは `tests/test_base_pyfile.py` にあります。
+```bash
+python -m pytest tests -q
+```
+→ 現在 14 件が通過します。重い依存（Ollama・cv2・PyMuPDF など）は不要です。
 # log_setting.py
 log_settingは、Pythonのloggingモジュールを使用して、ログを設定するためのユーティリティモジュールです。
 

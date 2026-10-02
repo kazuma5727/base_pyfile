@@ -1,14 +1,19 @@
-"""クリップボードのコピー内容をAIへ振り分け、回答を貼り付けられるようにする補助ツール。
+"""クリップボードのコピー内容をAIへ振り分け、結果を貼り付けられるようにする補助ツール。
 
-起動後、新しくコピーされたテキストを検知すると、`ai_router` の振り分けで
-最適なモデルを選んで回答を生成し、その回答をクリップボードへ書き戻します。
-ユーザーはそのまま Ctrl+V で貼り付けられます。
+起動後、新しくコピーされたテキストを検知すると、内容に応じた処理を行い、
+結果をクリップボードへ書き戻します。ユーザーはそのまま Ctrl+V で貼り付けられます。
+
+モードは2つあります（`mode` 引数）。
+    - "answer"（既定）: `ai_router` の振り分けで最適なモデルを選び、回答を生成する。
+    - "correct": 誤字脱字を文字数に応じたモデルで校正し、**元のテキストを修正したもの**
+      をクリップボードへ書き戻す（コピー → 貼り付けで直っている）。
 
 自動で前面アプリへ貼り付けたい場合は `auto_paste=True`（pyautoguiが必要）に
 してください。
 """
 
 # --- 標準ライブラリのインポート ---
+import sys
 import time
 from logging import NullHandler, getLogger
 from typing import Any, Dict, Optional
@@ -17,12 +22,15 @@ from typing import Any, Dict, Optional
 import pyperclip
 
 # --- 独自モジュールのインポート ---
+from base_pyfile.ai_corrector import correct_text
 from base_pyfile.ai_router import dispatch
 from base_pyfile.log_setting import get_log_handler, make_logger
 
 # --- ロガーの初期設定 ---
 logger = getLogger("log").getChild(__name__)
 logger.addHandler(NullHandler())
+
+VALID_MODES = ("answer", "correct")
 
 
 def _safe_paste() -> str:
@@ -59,6 +67,34 @@ def answer_text(text: str, use_labels: bool = True, **kwargs: Any) -> Dict[str, 
     return dispatch(text, use_labels=use_labels, **kwargs)
 
 
+def process_text(
+    text: str, mode: str = "answer", use_labels: bool = True, **kwargs: Any
+) -> Dict[str, Any]:
+    """モードに応じてテキストを処理します。
+
+    Args:
+        text (str): 処理させたいテキスト。
+        mode (str, optional): "answer"（回答生成）または "correct"（誤字脱字の校正）。
+        use_labels (bool, optional): answer モード時の振り分け方式。
+        **kwargs: 各処理へ渡す追加のキーワード引数。
+
+    Returns:
+        Dict[str, Any]: 処理結果の辞書。
+    """
+    if mode == "correct":
+        return correct_text(text, **kwargs)
+    if mode == "answer":
+        return answer_text(text, use_labels=use_labels, **kwargs)
+    raise ValueError(f"mode は {VALID_MODES} のいずれかを指定してください: {mode!r}")
+
+
+def _replacement_of(result: Dict[str, Any], mode: str) -> Optional[str]:
+    """処理結果から、クリップボードへ書き戻すテキストを取り出します。"""
+    if mode == "correct":
+        return result.get("corrected")
+    return result.get("answer")
+
+
 def paste_answer() -> None:
     """現在のクリップボード内容を、前面のアプリへ貼り付けます。
 
@@ -70,6 +106,7 @@ def paste_answer() -> None:
 
 
 def process_clipboard_once(
+    mode: str = "answer",
     use_labels: bool = True,
     auto_paste: bool = False,
     **kwargs: Any,
@@ -77,10 +114,11 @@ def process_clipboard_once(
     """現在のクリップボード内容を1回だけ処理します。
 
     Args:
-        use_labels (bool, optional): ラベル方式で振り分けるか。デフォルトはTrue。
-        auto_paste (bool, optional): Trueなら回答を前面アプリへ自動貼り付けします。
+        mode (str, optional): "answer" または "correct"。デフォルトは "answer"。
+        use_labels (bool, optional): answer モード時の振り分け方式。デフォルトはTrue。
+        auto_paste (bool, optional): Trueなら結果を前面アプリへ自動貼り付けします。
             デフォルトはFalse（クリップボードへ書き戻すのみ）。
-        **kwargs: dispatch() へ渡す追加のキーワード引数。
+        **kwargs: 各処理へ渡す追加のキーワード引数。
 
     Returns:
         Optional[Dict[str, Any]]: 生成結果の辞書。クリップボードが空の場合はNone。
@@ -90,10 +128,10 @@ def process_clipboard_once(
         logger.info("クリップボードが空のため処理をスキップしました。")
         return None
 
-    result = answer_text(text, use_labels=use_labels, **kwargs)
-    answer = result.get("answer")
-    if answer:
-        _safe_copy(answer)
+    result = process_text(text, mode=mode, use_labels=use_labels, **kwargs)
+    replacement = _replacement_of(result, mode)
+    if replacement:
+        _safe_copy(replacement)
         if auto_paste:
             paste_answer()
     return result
@@ -101,6 +139,7 @@ def process_clipboard_once(
 
 def watch_clipboard(
     interval: float = 0.5,
+    mode: str = "answer",
     use_labels: bool = True,
     auto_paste: bool = False,
     stop_after: Optional[int] = None,
@@ -110,19 +149,20 @@ def watch_clipboard(
 
     Args:
         interval (float, optional): クリップボードを確認する間隔(秒)。デフォルトは0.5。
-        use_labels (bool, optional): ラベル方式で振り分けるか。デフォルトはTrue。
-        auto_paste (bool, optional): Trueなら回答を前面アプリへ自動貼り付けします。
+        mode (str, optional): "answer" または "correct"。デフォルトは "answer"。
+        use_labels (bool, optional): answer モード時の振り分け方式。デフォルトはTrue。
+        auto_paste (bool, optional): Trueなら結果を前面アプリへ自動貼り付けします。
             デフォルトはFalse（クリップボードへ書き戻すのみ）。
         stop_after (Optional[int], optional): 指定した回数だけ処理したら終了します。
             Noneの場合は Ctrl+C まで監視し続けます。
-        **kwargs: dispatch() へ渡す追加のキーワード引数。
+        **kwargs: 各処理へ渡す追加のキーワード引数。
 
     Returns:
         int: 処理した回数。
     """
     last = _safe_paste()
     processed = 0
-    logger.info("クリップボードの監視を開始します（Ctrl+Cで停止）。")
+    logger.info(f"クリップボードの監視を開始します（mode={mode}, Ctrl+Cで停止）。")
 
     try:
         while True:
@@ -131,20 +171,22 @@ def watch_clipboard(
             if current and current != last:
                 last = current
                 logger.info(f"コピーを検知しました（{len(current)}文字）。")
-                result = answer_text(current, use_labels=use_labels, **kwargs)
-                answer = result.get("answer")
-                if answer:
-                    _safe_copy(answer)
-                    # 自分の回答を新規コピーとして再処理しないよう記録
-                    last = answer
+                result = process_text(
+                    current, mode=mode, use_labels=use_labels, **kwargs
+                )
+                replacement = _replacement_of(result, mode)
+                if replacement:
+                    _safe_copy(replacement)
+                    # 自分の出力を新規コピーとして再処理しないよう記録
+                    last = replacement
                     if auto_paste:
                         paste_answer()
                     processed += 1
                     logger.info(
-                        f"[{processed}] {result.get('model')} が回答しました。"
+                        f"[{processed}] {result.get('model')} が処理しました。"
                     )
                 else:
-                    logger.warning("回答を生成できませんでした。")
+                    logger.warning("結果を生成できませんでした。")
 
                 if stop_after is not None and processed >= stop_after:
                     break
@@ -156,12 +198,23 @@ def watch_clipboard(
     return processed
 
 
-def main():
-    print("=== クリップボードAI 振り分けツール ===")
-    print("起動後、何かをコピーすると、内容を判断して回答をクリップボードへ書き戻します。")
-    print("そのまま Ctrl+V で貼り付けられます。停止は Ctrl+C。")
+def main() -> None:
+    # 使い方: python -m base_pyfile.ai_clipboard [answer|correct]
+    mode = sys.argv[1] if len(sys.argv) > 1 else "answer"
+    if mode not in VALID_MODES:
+        print(f"mode は {VALID_MODES} のいずれかを指定してください。")
+        return
 
-    watch_clipboard()
+    if mode == "correct":
+        print("=== クリップボード 誤字脱字 校正ツール ===")
+        print("起動後、何かをコピーすると、校正した内容をクリップボードへ書き戻します。")
+        print("そのまま Ctrl+V で、直ったテキストが貼り付けられます。停止は Ctrl+C。")
+    else:
+        print("=== クリップボードAI 振り分けツール ===")
+        print("起動後、何かをコピーすると、内容を判断して回答をクリップボードへ書き戻します。")
+        print("そのまま Ctrl+V で貼り付けられます。停止は Ctrl+C。")
+
+    watch_clipboard(mode=mode)
 
 
 if __name__ == "__main__":

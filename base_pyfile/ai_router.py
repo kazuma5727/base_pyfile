@@ -37,6 +37,11 @@ logger.addHandler(NullHandler())
 # Ollamaサーバーの接続先。モデル構成・振り分け設定は ai_models.json 側で管理する。
 OLLAMA_BASE_URL = "http://localhost:11434"
 
+# 一覧取得など、軽い問い合わせ用の短いタイムアウト(秒)
+LIST_MODELS_TIMEOUT = 5
+# 生成はモデルのロードを含むと数十秒かかるため、余裕を持ったタイムアウト(秒)
+GENERATE_TIMEOUT = 120
+
 # 「わからない」を表す固定ラベル。ラベル方式で常に同じ位置に固定する。
 UNDECIDED_LABEL = "A"
 
@@ -135,7 +140,7 @@ def generate(
     prompt: str,
     model: Optional[str] = None,
     options: Optional[Dict[str, Any]] = None,
-    timeout: int = 5,
+    timeout: int = GENERATE_TIMEOUT,
 ) -> Tuple[Optional[str], float]:
     """Ollamaへプロンプトを送り、単発のテキスト生成を実行します。
 
@@ -148,7 +153,8 @@ def generate(
             省略した場合は resolve_model() で自動選択します。
         options (Optional[Dict[str, Any]], optional): Ollamaの生成オプション
             （temperature, num_predict など）。省略した場合は空の辞書。
-        timeout (int, optional): 通信のタイムアウト秒。デフォルトは5。
+        timeout (int, optional): 通信のタイムアウト秒。デフォルトは GENERATE_TIMEOUT(120)。
+            一覧取得のような軽い処理と違い、生成は待ち時間が長いので注意。
 
     Returns:
         Tuple[Optional[str], float]: 生成されたテキストと処理時間(ミリ秒)。

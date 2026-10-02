@@ -3,7 +3,7 @@ import re
 from functools import cache
 from logging import NullHandler, getLogger
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import Dict, List, Optional, Union
 
 try:
     from natsort import natsorted
@@ -15,7 +15,43 @@ from base_pyfile.log_setting import get_log_handler, make_logger
 logger = getLogger("log").getChild(__name__)
 logger.addHandler(NullHandler())
 
-existing_files = {}
+# unique_path が「同じパスには同じ接尾辞を再利用する」ために保持するキャッシュ。
+# 無制限に増えないよう、最大 MAX_EXISTING_FILES 件を超えた分は古いものから破棄する。
+MAX_EXISTING_FILES = 1024
+existing_files: Dict[str, int] = {}
+
+
+def _touch_existing_path(file_path: str, counter: int) -> int:
+    """接尾辞キャッシュを更新し、上限を超えた古いエントリを破棄する。
+
+    Args:
+        file_path (str): キャッシュのキーとなるファイルパス。
+        counter (int): 新規登録時の初期連番。
+
+    Returns:
+        int: 更新後の連番。
+    """
+    if file_path in existing_files:
+        # 直近で使われたので末尾（=新しい側）へ移動
+        existing_files[file_path] = existing_files.pop(file_path)
+    else:
+        existing_files[file_path] = counter
+
+    # dictは挿入順を保持するため、先頭が最も古いエントリ
+    while len(existing_files) > MAX_EXISTING_FILES:
+        oldest = next(iter(existing_files))
+        del existing_files[oldest]
+
+    return existing_files[file_path]
+
+
+def reset_existing_files() -> None:
+    """unique_path が保持する接尾辞キャッシュをクリアする。
+
+    バッチ処理の区切りなど、命名の連番をリセットしたいときに呼ぶ。
+    """
+    existing_files.clear()
+
 
 def unique_path(
     file_path: str,
@@ -35,8 +71,6 @@ def unique_path(
     Returns:
         str: 一意になったファイルパス
     """
-    global existing_files
-
     # Pathオブジェクトの場合、文字列に変換する
     if isinstance(file_path, Path):
         file_path = file_path.as_posix()
@@ -44,8 +78,8 @@ def unique_path(
         file_path = str(file_path)
 
     # すでに存在するファイルのリストにファイルパスを追加する
-    if file_path not in existing_files:
-        existing_files[file_path] = counter
+    # （同じパスを再び渡した場合は同じ連番を再利用する）
+    _touch_existing_path(file_path, counter)
 
     # ファイル名と拡張子を分離する
     base, ext = os.path.splitext(file_path)
@@ -59,7 +93,7 @@ def unique_path(
         new_path = file_path
         check_path = file_path
         return_path = file_path.format(existing_files[file_path])
-        
+
     # パスが存在しない場合、ディレクトリを作成して返す
     if not (
         os.path.exists(new_path.format(""))
@@ -81,7 +115,7 @@ def unique_path(
             # 同一テキストファイル確認
             try:
                 if new_path.format(existing_files[file_path]) and existing_text:
-                    from file_manager import read_text_file
+                    from base_pyfile.file_manager import read_text_file
 
                     before_text = read_text_file(
                         new_path.format(existing_files[file_path])
@@ -125,17 +159,22 @@ def _make_directory(directory):
     logger.debug(f"{directory}のディレクトリを作成しました")
 
 
-def make_directory(path):
+def make_directory(path, is_file: Optional[bool] = None):
     """指定されたパスのディレクトリを作成します。
 
     Args:
         path (str or Path): 作成するディレクトリのパス
+        is_file (Optional[bool], optional): path がファイルパスかどうか。
+            None の場合は名前にドットを含むかで自動判定する（従来動作）。
+            ドットを含むディレクトリ名など、自動判定が誤る場合は明示的に指定する。
 
     Returns:
         str or Path: 渡されたパスをそのまま返します。
     """
     path_obj = Path(path)
-    if "." in path_obj.name:
+    if is_file is None:
+        is_file = "." in path_obj.name
+    if is_file:
         directory = path_obj.parent.absolute()
     else:
         directory = path_obj.absolute()

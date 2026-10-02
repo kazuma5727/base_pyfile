@@ -9,17 +9,22 @@ logger = getLogger("log").getChild(__name__)
 logger.addHandler(NullHandler())
 
 
-def logger_timer(level: int = 10, n=1) -> Callable:
+def logger_timer(level: int = 10, n: int = 1) -> Callable:
     """
     指定された logger に、関数の実行時間をログ出力するデコレーターです。
 
     Args:
         level: ログレベル デフォルトはdebug
-        n: 実行回数 デフォルトは1
+        n: 実行回数 デフォルトは1（1以上を指定すること）
 
     Returns:
         デコレーター
+
+    Note:
+        関数を n 回実行して平均時間を出しますが、戻り値は最後の1回の結果のみです。
     """
+    if n < 1:
+        raise ValueError(f"n は1以上を指定してください（指定値: {n}）")
 
     def decorator(func):
         @wraps(func)
@@ -32,10 +37,11 @@ def logger_timer(level: int = 10, n=1) -> Callable:
                 **kwargs: キーワード引数
 
             Returns:
-                関数の実行結果
+                関数の実行結果（最後の1回分）
             """
             total_time = 0
-            for i in range(n):
+            result = None
+            for _ in range(n):
                 start_time = time.perf_counter()
                 result = func(*args, **kwargs)
                 end_time = time.perf_counter()
@@ -56,7 +62,7 @@ def logger_timer(level: int = 10, n=1) -> Callable:
 
 def timer(func: Callable) -> Callable:
     """
-    関数の実行時間をログ出力するデコレーターです。
+    関数の実行時間を標準出力に表示するデコレーターです。
 
     Args:
         func: デコレーターを適用する関数
@@ -68,7 +74,7 @@ def timer(func: Callable) -> Callable:
     @wraps(func)
     def wrapper(*args, **kwargs):
         """
-        関数の実行時間をログ出力するラッパー関数です。
+        関数の実行時間を標準出力に表示するラッパー関数です。
 
         Args:
             *args: 位置引数

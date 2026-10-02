@@ -90,7 +90,7 @@ def learning_materials(
 
 
 def move_and_click(
-    x_position: int | tuple[int, int] = pyautogui.position(),
+    x_position: Union[int, tuple, None] = None,
     y_position: int = None,
     x_error: int = 0,
     y_error: int = 0,
@@ -115,6 +115,9 @@ def move_and_click(
         None
     """
     # x_positionがタプルの場合、それをxとyに分解
+    if x_position is None:
+        # 引数省略時は「呼び出した瞬間」のマウス位置を使う（既定値は定義時に固定されるため None を既定にする）
+        x_position = pyautogui.position()
     if isinstance(x_position, tuple) or isinstance(x_position, list):
         x, y = x_position
     else:
@@ -173,7 +176,7 @@ def search_color(
     RGB: Union[Tuple[int, int, int], List[int], int, str],
     G: int = None,
     B: int = None,
-    xy: Union[Tuple[int, int], List[int], int] = pyautogui.position(),
+    xy: Union[Tuple[int, int], List[int], int, None] = None,
     y: int = None,
     click: int = 0,
     image: np.ndarray = None,
@@ -214,6 +217,9 @@ def search_color(
         )
 
     # xy値の処理
+    if xy is None:
+        # 引数省略時は「呼び出した瞬間」のマウス位置を使う（既定値は定義時に固定されるため None を既定にする）
+        xy = pyautogui.position()
     if isinstance(xy, tuple) or isinstance(xy, list):
         if len(xy) != 2:
             raise ValueError(

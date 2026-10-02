@@ -1,9 +1,11 @@
 import json
 import os
 import subprocess
+from pathlib import Path
 
 # 指定された設定ファイルの絶対パス
-JSON_PATH = r"C:\tool\base_pyfile\base_pyfile\ai_models.json"
+# このファイルと同じフォルダの ai_models.json を参照する（他PCでも動くように相対化）
+JSON_PATH = Path(__file__).with_name("ai_models.json")
 
 # グローバル変数にキャッシュを保持（2回目以降は Ollama を叩かない）
 _cached_installed_models = None
@@ -55,11 +57,12 @@ def load_valid_models():
     valid_models = []
     for model in config.get("models", []):
         # JSONに書かれている名前が、Ollamaに存在するか確認（クラウドモデル等はパスするよう考慮）
-        if model["name"] in installed_models or ":cloud" in model["name"]:
+        name = model.get("name", "")
+        if name in installed_models or ":cloud" in name:
             valid_models.append(model)
         else:
             print(
-                f"❌ スキップ: {model['name']} はOllamaにインストールされていません。"
+                f"❌ スキップ: {model.get('name')} はOllamaにインストールされていません。"
             )
 
     return valid_models

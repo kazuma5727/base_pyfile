@@ -46,6 +46,18 @@ def read_text_file(
             - 読み込み失敗時: 空の文字列またはリスト。
     """
     file_path = Path(file_path)
+
+    def _empty_result():
+        """読み込み失敗時の返り値を、delimiterやreturn_encodingに応じて返す。"""
+        if return_encoding:
+            return ([], "") if delimiter else ("", "")
+        return [] if delimiter else ""
+
+    # ファイルが存在しない場合は、エンコーディングを試す前に明示的に返す
+    if not file_path.is_file():
+        logger.warning(f"'{file_path}' が存在しないか、ファイルではありません。")
+        return _empty_result()
+
     # 試行するエンコーディングのリスト
     encodings = ["utf-8", "Shift_JIS", "euc_jp", "iso2022_jp", "cp932"]
     text = ""
@@ -58,14 +70,14 @@ def read_text_file(
             used_encoding = enc
             logger.debug(f"'{file_path}' をエンコーディング '{enc}' で読み込みました。")
             break
-        except (UnicodeDecodeError, FileNotFoundError):
+        except UnicodeDecodeError:
             continue
+        except OSError as e:
+            logger.error(f"'{file_path}' の読み込みに失敗しました: {e}")
+            return _empty_result()
     else:
         logger.warning(f"'{file_path}' をどのエンコーディングでも開けませんでした。空の文字列を返します。")
-        # 読み込み失敗時の返り値をdelimiterの有無で分岐
-        if return_encoding:
-            return ([], "") if delimiter else ("", "")
-        return [] if delimiter else ""
+        return _empty_result()
 
     # 区切り文字で分割
     if delimiter:
@@ -90,7 +102,7 @@ def write_file(
     file_encoding: str = "utf-8",
     write_mode: str = "w",
     backup: bool = True,
-) -> None:
+) -> Path:
     """指定されたパスにテキストを書き込みます。
 
     書き込み前に、既存ファイルとの内容を比較し、変更がある場合のみ
@@ -107,12 +119,18 @@ def write_file(
     file_path = Path(file_path)
     write_text = str(write_text)
 
-    # 拡張子が意図したものと違う場合は修正
+    # 拡張子の扱い:
+    # 拡張子が無い場合のみ、意図する拡張子を付与する。
+    # 明示的に異なる拡張子が指定されたパスは尊重し、勝手に書き換えない。
     if not extension.startswith("."):
         extension = "." + extension
-    if file_path.suffix != extension:
-        logger.info(f"拡張子を '{file_path.suffix}' から '{extension}' に変更します。")
+    if file_path.suffix == "":
         file_path = file_path.with_suffix(extension)
+    elif file_path.suffix != extension:
+        logger.info(
+            f"拡張子 '{file_path.suffix}' は指定の '{extension}' と異なりますが、"
+            "指定されたパスを尊重してそのまま使用します。"
+        )
 
     # 親ディレクトリが存在しない場合は作成
     make_directory(file_path.parent)

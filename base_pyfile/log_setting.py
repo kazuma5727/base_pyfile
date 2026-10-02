@@ -1,4 +1,3 @@
-import os
 import sys
 from logging import (
     CRITICAL,
@@ -13,6 +12,7 @@ from logging import (
     NullHandler,
     StreamHandler,
     basicConfig,
+    getLevelName,
     getLogger,
 )
 from pathlib import Path
@@ -27,11 +27,24 @@ logger = getLogger("log").getChild(__name__)
 logger.addHandler(NullHandler())
 
 
+def _level_name(level: int) -> str:
+    """ログレベルを、ログファイル名に使える安全な文字列へ変換する。
+
+    標準レベル（DEBUG/INFO/WARNING/ERROR/CRITICAL）以外や未知の値でも
+    KeyError にならないようにするためのヘルパー。
+    """
+    name = getLevelName(level)
+    # 未知のレベルでは "Level 5" のような空白入りの文字列が返るため除外
+    if isinstance(name, str) and " " not in name:
+        return name
+    return f"LEVEL{level}"
+
+
 def get_log_handler(
-    log_level: int = WARNING, 
-    file_path: Path = Path(sys.argv[0]), 
-    log_folder: str = "", 
-    log_format: str = DEFAULT_LOG_FORMAT
+    log_level: int = WARNING,
+    file_path: Path = Path(sys.argv[0]),
+    log_folder: str = "",
+    log_format: str = DEFAULT_LOG_FORMAT,
 ) -> Handler:
     """ログハンドラを作成
 
@@ -44,17 +57,19 @@ def get_log_handler(
     Returns:
         Handler: 作成されたハンドラ
     """
+    # Pathに正規化しておく（文字列・Pathどちらでも受け付ける）
+    file_path = Path(file_path)
+
     # ログフォルダが指定された場合、ログフォルダを作成し、ログファイルを作成
     if log_folder:
-        file_path = Path(file_path)
-        if file_path.is_file():
-            file_folder_path = file_path.parent
-        log_folder_path = file_folder_path / log_folder
+        # file_path がファイルでなくても親ディレクトリを基準にする
+        # （以前は file_path.is_file() のときだけ代入しており UnboundLocalError になっていた）
+        log_folder_path = file_path.parent / log_folder
         log_folder_path.mkdir(parents=True, exist_ok=True)
-        log_file_name = f"{LOG_LEVEL_NAMES[log_level]}_{file_path.stem}.log"
+        log_file_name = f"{_level_name(log_level)}_{file_path.stem}.log"
         log_file_path = log_folder_path / log_file_name
         logger.info(f"ログファイルを作成: {log_file_path}")
-        handler = FileHandler(filename=log_file_path, encoding='utf-8')
+        handler = FileHandler(filename=log_file_path, encoding="utf-8")
 
     # ログフォルダが指定されない場合、標準出力に出力
     else:
@@ -71,7 +86,7 @@ def make_logger(
     level: int = DEBUG,
     log_folder: str = "",
     handler: Handler = None,
-    log_format: str = DEFAULT_LOG_FORMAT
+    log_format: str = DEFAULT_LOG_FORMAT,
 ) -> Logger:
     """ロガーを取得する
 
@@ -86,16 +101,24 @@ def make_logger(
         Logger: 作成されたロガー
     """
     # ロガーオブジェクトを作成し、名前を設定
+    # （getLoggerは同名なら同じオブジェクトを返す点に注意）
     logger = getLogger(logger_name)
+
+    # 既存ハンドラを除去する。
+    # 同名ロガーで make_logger を複数回呼ぶと、以前はハンドラが積み重なり
+    # 同じログが重複出力されていた。
+    for existing_handler in list(logger.handlers):
+        logger.removeHandler(existing_handler)
 
     # handlerが与えられた場合はそれを使用し、与えられなかった場合はget_log_handler()関数で作成したハンドラを使用
     if handler:
-        logger.addHandler(handler)
-        level = handler.level
+        target_handler = handler
     else:
-        logger.addHandler(get_log_handler(level, log_folder=log_folder, log_format=log_format))
+        target_handler = get_log_handler(level, log_folder=log_folder, log_format=log_format)
+    logger.addHandler(target_handler)
 
     # レベルを設定
+    # 引数の level を優先する（以前は handler 指定時に handler.level で上書きしていた）
     logger.setLevel(level)
 
     # 親ロガーにログを伝播させないように設定
