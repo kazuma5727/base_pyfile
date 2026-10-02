@@ -22,6 +22,7 @@
 | LLMの振り分け・生成 | `route_to_model` / `dispatch` / `generate` | `ai_router` | `requests` + Ollamaサーバー |
 | クリップボードAI | `watch_clipboard` / `process_clipboard_once` | `ai_clipboard` | `pyperclip`（自動貼付は `pyautogui`） |
 | 誤字脱字の校正 | `correct_text` / `select_model_by_length` | `ai_corrector` | `requests` + Ollamaサーバー |
+| 翻訳（既定は日本語へ） | `translate_text` / `build_translation_prompt` | `ai_translator` | `requests` + Ollamaサーバー |
 | マウス・画像自動化 | `move_and_click` / `search_color` など | `automation_tools` | `opencv-python` `numpy` `pyautogui` `pynput` |
 | ブラウザ操作 | `open_page` / `get_urls` / `tab_delete` | `web_open` | `requests` `beautifulsoup4` `tqdm` `pyautogui` |
 | PDF/TIFF変換 | `pdf_to_png` / `tiff_to_pdf` など | `pdf_tiff_converter` | `PyMuPDF` `Pillow` |
@@ -89,6 +90,66 @@ python -m base_pyfile.ai_clipboard correct
 }
 ```
 
+### 翻訳（コピー → 貼り付けで翻訳）
+`ai_translator` を使うと、クリップボードの中身を指定言語へ翻訳してそのまま書き戻せます。**既定は日本語へ翻訳**です。使うモデルは `ai_corrector` と同じく文字数で決まり、`ai_models.json` の `translation.tiers` で設定します。
+
+```python
+from base_pyfile import translate_text, process_clipboard_once
+
+# テキストを直接翻訳（失敗時は元のテキストが返り、changed=Falseになる）
+result = translate_text("The quick brown fox jumps over the lazy dog.")  # 既定で日本語へ
+print(result["model"], result["translated"], result["changed"])
+
+# 翻訳先を指定する（"en" などの言語コード、または "英語" のような表示名）
+result = translate_text("こんにちは", target_language="en")
+
+# クリップボードを1回だけ翻訳して書き戻す（そのまま Ctrl+V で翻訳結果が貼れる）
+process_clipboard_once(mode="translate")
+```
+
+```bash
+# クリップボードを監視し、コピーのたびに自動で日本語へ翻訳（Ctrl+Cで停止）
+python -m base_pyfile.ai_clipboard translate
+
+# 翻訳先の言語を指定する（例: 英語へ）
+python -m base_pyfile.ai_clipboard translate en
+```
+
+- `watch_clipboard(mode="translate")` / `process_clipboard_once(mode="translate")` で翻訳モードになります（既定は `"answer"`）。
+- 対応している言語コードは `ai_translator.LANGUAGE_NAMES`（ja / en / zh / ko / de / fr / es / pt）です。未知のコードは指定した文字列がそのままプロンプトに使われます。
+- モデルは `select_model_by_length(..., section="translation")` が選び、未インストールなら `translation.fallback` → `router.default_target` へ自動で切り替えます。
+- モデルが応答しない場合は **元のテキストをそのまま返します**（クリップボードを壊さない）。`changed` で翻訳が行われたかを判定できます。
+
+```json
+"translation": {
+  "min_chars": 1,
+  "target_language": "ja",
+  "tiers": [
+    { "max_chars": 200,  "model": "qwen2.5:0.5b" },
+    { "max_chars": 1000, "model": "qwen3.5:9b" },
+    { "max_chars": 4000, "model": "gpt-oss:20b" },
+    { "max_chars": null, "model": "glm-5.3-flash:cloud" }
+  ],
+  "fallback": ["qwen2.5-coder:3b", "deepseek-r1:1.5b"]
+}
+```
+
+### .bat ランチャー（ダブルクリック／ショートカット起動）
+リポジトリ直下の `ai_clipboard.bat` を使うと、オプション付きでクリップボード監視を起動できます。起動後は常駐し、**クリップボードが更新されるたびに自動で処理**して結果を書き戻します。停止は Ctrl+C。
+
+```bat
+ai_clipboard.bat -honyaku       REM コピーした内容を日本語へ翻訳
+ai_clipboard.bat -gojidatuji    REM コピーした内容の誤字脱字を校正
+ai_clipboard.bat -kaitou        REM コピーした内容をAIへ振り分けて回答
+ai_clipboard.bat -honyaku en    REM 翻訳先の言語を指定（既定は ja=日本語）
+ai_clipboard.bat -help          REM 使い方を表示
+```
+
+- 内部では `python -m base_pyfile.ai_clipboard <mode>` を呼んでいるだけです（`-honyaku`→`translate`、`-gojidatuji`→`correct`、`-kaitou`→`answer`）。
+- 先頭の `-` は省略可（`honyaku` でも起動できます）。
+- Python は PATH 上の `python` を優先し、無ければ `py` ランチャーを使います。特定のPythonを使いたい場合は bat 内の `set "PY=python"` を書き換えてください。
+- bat は自身のフォルダを作業ディレクトリにする（`cd /d "%~dp0"`）ため、`base_pyfile` パッケージが import できます。デスクトップ等からショートカットを張る場合は、この bat 本体を指してください。
+
 ### 動作の要点（AIがハマりやすい点）
 - `make_logger()` を**同じロガー名で複数回呼んでも、ハンドラは置き換え**られ、ログが二重出力されません。`level` 引数が常に優先されます。
 - `get_log_handler()` は `file_path` が実在しなくても動きます。標準外のログレベル（例: 25）でも `LEVEL25` としてファイル名に使え、KeyError になりません。
@@ -106,7 +167,7 @@ python -m base_pyfile.ai_clipboard correct
 ```bash
 python -m pytest tests -q
 ```
-→ 現在 14 件が通過します。重い依存（Ollama・cv2・PyMuPDF など）は不要です。
+→ 現在 26 件が通過します。重い依存（Ollama・cv2・PyMuPDF など）は不要です。
 # log_setting.py
 log_settingは、Pythonのloggingモジュールを使用して、ログを設定するためのユーティリティモジュールです。
 

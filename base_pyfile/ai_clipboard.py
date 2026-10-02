@@ -3,10 +3,12 @@
 起動後、新しくコピーされたテキストを検知すると、内容に応じた処理を行い、
 結果をクリップボードへ書き戻します。ユーザーはそのまま Ctrl+V で貼り付けられます。
 
-モードは2つあります（`mode` 引数）。
+モードは3つあります（`mode` 引数）。
     - "answer"（既定）: `ai_router` の振り分けで最適なモデルを選び、回答を生成する。
     - "correct": 誤字脱字を文字数に応じたモデルで校正し、**元のテキストを修正したもの**
       をクリップボードへ書き戻す（コピー → 貼り付けで直っている）。
+    - "translate": 文字数に応じたモデルで **日本語へ翻訳**し、翻訳結果を
+      クリップボードへ書き戻す（`target_language` で翻訳先を変更可能）。
 
 自動で前面アプリへ貼り付けたい場合は `auto_paste=True`（pyautoguiが必要）に
 してください。
@@ -24,13 +26,14 @@ import pyperclip
 # --- 独自モジュールのインポート ---
 from base_pyfile.ai_corrector import correct_text
 from base_pyfile.ai_router import dispatch
+from base_pyfile.ai_translator import DEFAULT_TARGET_LANGUAGE, translate_text
 from base_pyfile.log_setting import get_log_handler, make_logger
 
 # --- ロガーの初期設定 ---
 logger = getLogger("log").getChild(__name__)
 logger.addHandler(NullHandler())
 
-VALID_MODES = ("answer", "correct")
+VALID_MODES = ("answer", "correct", "translate")
 
 
 def _safe_paste() -> str:
@@ -74,15 +77,18 @@ def process_text(
 
     Args:
         text (str): 処理させたいテキスト。
-        mode (str, optional): "answer"（回答生成）または "correct"（誤字脱字の校正）。
+        mode (str, optional): "answer"（回答生成）、"correct"（誤字脱字の校正）、
+            "translate"（翻訳）。
         use_labels (bool, optional): answer モード時の振り分け方式。
-        **kwargs: 各処理へ渡す追加のキーワード引数。
+        **kwargs: 各処理へ渡す追加のキーワード引数（translate なら target_language など）。
 
     Returns:
         Dict[str, Any]: 処理結果の辞書。
     """
     if mode == "correct":
         return correct_text(text, **kwargs)
+    if mode == "translate":
+        return translate_text(text, **kwargs)
     if mode == "answer":
         return answer_text(text, use_labels=use_labels, **kwargs)
     raise ValueError(f"mode は {VALID_MODES} のいずれかを指定してください: {mode!r}")
@@ -92,6 +98,8 @@ def _replacement_of(result: Dict[str, Any], mode: str) -> Optional[str]:
     """処理結果から、クリップボードへ書き戻すテキストを取り出します。"""
     if mode == "correct":
         return result.get("corrected")
+    if mode == "translate":
+        return result.get("translated")
     return result.get("answer")
 
 
@@ -114,7 +122,8 @@ def process_clipboard_once(
     """現在のクリップボード内容を1回だけ処理します。
 
     Args:
-        mode (str, optional): "answer" または "correct"。デフォルトは "answer"。
+        mode (str, optional): "answer"、"correct"、"translate" のいずれか。
+            デフォルトは "answer"。
         use_labels (bool, optional): answer モード時の振り分け方式。デフォルトはTrue。
         auto_paste (bool, optional): Trueなら結果を前面アプリへ自動貼り付けします。
             デフォルトはFalse（クリップボードへ書き戻すのみ）。
@@ -149,7 +158,8 @@ def watch_clipboard(
 
     Args:
         interval (float, optional): クリップボードを確認する間隔(秒)。デフォルトは0.5。
-        mode (str, optional): "answer" または "correct"。デフォルトは "answer"。
+        mode (str, optional): "answer"、"correct"、"translate" のいずれか。
+            デフォルトは "answer"。
         use_labels (bool, optional): answer モード時の振り分け方式。デフォルトはTrue。
         auto_paste (bool, optional): Trueなら結果を前面アプリへ自動貼り付けします。
             デフォルトはFalse（クリップボードへ書き戻すのみ）。
@@ -199,22 +209,31 @@ def watch_clipboard(
 
 
 def main() -> None:
-    # 使い方: python -m base_pyfile.ai_clipboard [answer|correct]
-    mode = sys.argv[1] if len(sys.argv) > 1 else "answer"
+    # 使い方: python -m base_pyfile.ai_clipboard [answer|correct|translate] [言語]
+    args = sys.argv[1:]
+    mode = args[0] if args else "answer"
     if mode not in VALID_MODES:
         print(f"mode は {VALID_MODES} のいずれかを指定してください。")
         return
 
+    kwargs: Dict[str, Any] = {}
     if mode == "correct":
         print("=== クリップボード 誤字脱字 校正ツール ===")
         print("起動後、何かをコピーすると、校正した内容をクリップボードへ書き戻します。")
         print("そのまま Ctrl+V で、直ったテキストが貼り付けられます。停止は Ctrl+C。")
+    elif mode == "translate":
+        # 2つ目の引数で翻訳先の言語を指定できる（例: translate en）
+        target_language = args[1] if len(args) > 1 else DEFAULT_TARGET_LANGUAGE
+        kwargs["target_language"] = target_language
+        print(f"=== クリップボード 翻訳ツール（{target_language} へ） ===")
+        print("起動後、何かをコピーすると、翻訳した内容をクリップボードへ書き戻します。")
+        print("そのまま Ctrl+V で、翻訳結果が貼り付けられます。停止は Ctrl+C。")
     else:
         print("=== クリップボードAI 振り分けツール ===")
         print("起動後、何かをコピーすると、内容を判断して回答をクリップボードへ書き戻します。")
         print("そのまま Ctrl+V で貼り付けられます。停止は Ctrl+C。")
 
-    watch_clipboard(mode=mode)
+    watch_clipboard(mode=mode, **kwargs)
 
 
 if __name__ == "__main__":

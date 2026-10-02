@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from base_pyfile import ai_corrector, function_timer
+from base_pyfile import ai_clipboard, ai_corrector, ai_translator, function_timer
 from base_pyfile.ai_router import _match_model_name, _parse_label, build_label_map
 from base_pyfile.file_manager import read_text_file, write_file
 from base_pyfile.log_setting import get_log_handler, make_logger
@@ -219,3 +219,74 @@ def test_correct_text_empty_text():
     result = ai_corrector.correct_text("   ", profiles=PROFILES_FOR_CORRECTION)
     assert result["corrected"] == "   "
     assert result["changed"] is False
+
+
+# ------------------------------------------------------------
+# ai_translator（ネットワークを使わず、generateはモンキーパッチ）
+# ------------------------------------------------------------
+PROFILES_FOR_TRANSLATION = {
+    "router": {"default_target": "mid"},
+    "translation": {
+        "min_chars": 1,
+        "target_language": "ja",
+        "tiers": [
+            {"max_chars": 10, "model": "small"},
+            {"max_chars": None, "model": "big"},
+        ],
+        "fallback": ["mid"],
+    },
+}
+
+
+def test_language_label():
+    assert ai_translator.language_label("ja") == "日本語"
+    assert ai_translator.language_label("EN") == "英語"
+    assert ai_translator.language_label("Klingon") == "Klingon"
+
+
+def test_build_translation_prompt_mentions_target():
+    prompt = ai_translator.build_translation_prompt("hello", "ja")
+    assert "日本語" in prompt
+    assert "hello" in prompt
+
+
+def test_translate_select_model_by_length():
+    installed = ["small", "mid", "big"]
+    assert (
+        ai_translator.select_model_by_length(
+            "short", PROFILES_FOR_TRANSLATION, installed, section="translation"
+        )
+        == "small"
+    )
+    assert (
+        ai_translator.select_model_by_length(
+            "x" * 50, PROFILES_FOR_TRANSLATION, installed, section="translation"
+        )
+        == "big"
+    )
+
+
+def test_translate_text_returns_translated(monkeypatch):
+    monkeypatch.setattr(ai_translator, "generate", lambda *a, **k: ("こんにちは", 9.0))
+    result = ai_translator.translate_text(
+        "hello", profiles=PROFILES_FOR_TRANSLATION, model="dummy"
+    )
+    assert result["translated"] == "こんにちは"
+    assert result["changed"] is True
+    assert result["model"] == "dummy"
+    assert result["target_language"] == "ja"
+
+
+def test_translate_text_keeps_original_on_failure(monkeypatch):
+    monkeypatch.setattr(ai_translator, "generate", lambda *a, **k: (None, 3.0))
+    result = ai_translator.translate_text(
+        "hello", profiles=PROFILES_FOR_TRANSLATION, model="dummy"
+    )
+    assert result["translated"] == "hello"
+    assert result["changed"] is False
+
+
+def test_ai_clipboard_translate_replacement():
+    assert ai_clipboard._replacement_of({"translated": "x"}, "translate") == "x"
+    assert ai_clipboard._replacement_of({"corrected": "y"}, "correct") == "y"
+    assert ai_clipboard._replacement_of({"answer": "z"}, "answer") == "z"

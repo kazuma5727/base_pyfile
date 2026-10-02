@@ -33,7 +33,10 @@ __all__ = [
     "watch_clipboard",
     "process_text",
     "correct_text",
+    "build_correction_prompt",
     "select_model_by_length",
+    "translate_text",
+    "build_translation_prompt",
     "fast_click",
     "full_templatematching",
     "learning_materials",
@@ -85,7 +88,11 @@ _MODULE_OF: Dict[str, str] = {
     "process_text": "base_pyfile.ai_clipboard",
     # ai_corrector（文字数に応じた誤字脱字の校正）
     "correct_text": "base_pyfile.ai_corrector",
+    "build_correction_prompt": "base_pyfile.ai_corrector",
     "select_model_by_length": "base_pyfile.ai_corrector",
+    # ai_translator（文字数に応じた翻訳。既定は日本語へ）
+    "translate_text": "base_pyfile.ai_translator",
+    "build_translation_prompt": "base_pyfile.ai_translator",
     # automation_tools（cv2 / pyautogui / pynput が必要）
     "fast_click": "base_pyfile.automation_tools",
     "full_templatematching": "base_pyfile.automation_tools",

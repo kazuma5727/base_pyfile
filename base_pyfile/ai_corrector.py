@@ -56,20 +56,24 @@ def select_model_by_length(
     profiles: Optional[Dict[str, Any]] = None,
     installed: Optional[List[str]] = None,
     timeout: int = LIST_MODELS_TIMEOUT,
+    section: str = "correction",
 ) -> Optional[str]:
-    """文字数に応じて校正に使うモデル名を1つ選びます。
+    """文字数に応じて処理に使うモデル名を1つ選びます。
 
-    `ai_models.json` の `correction.tiers`（`max_chars` 昇順）を上から見て、
-    文字数が収まる最初のモデルを選びます。未インストールだった場合は
-    `correction.fallback` → `router.default_target` の順に切り替えます。
+    `ai_models.json` の指定セクション（既定は `correction`）の `tiers` を
+    `max_chars` 昇順に見て、文字数が収まる最初のモデルを選びます。
+    未インストールだった場合は同セクションの `fallback` →
+    `router.default_target` の順に切り替えます。
 
     Args:
-        text (str): 校正対象のテキスト。
+        text (str): 処理対象のテキスト。
         profiles (Optional[Dict[str, Any]], optional): モデル特性の辞書。
             省略した場合は load_model_profiles() で読み込みます。
         installed (Optional[List[str]], optional): インストール済みモデルの一覧。
             省略した場合は Ollama へ問い合わせます。
         timeout (int, optional): 一覧取得のタイムアウト秒。
+        section (str, optional): 参照する設定セクション名。既定は "correction"。
+            翻訳では `ai_translator` から "translation" が渡されます。
 
     Returns:
         Optional[str]: 選択されたモデル名。決められない場合は None。
@@ -77,7 +81,7 @@ def select_model_by_length(
     if profiles is None:
         profiles = load_model_profiles()
 
-    correction = profiles.get("correction", {}) or {}
+    correction = profiles.get(section, {}) or {}
     tiers = [t for t in correction.get("tiers", []) if isinstance(t, dict)]
     # max_chars が None のものは最後尾に回して昇順ソート
     tiers.sort(key=lambda t: (t.get("max_chars") is None, t.get("max_chars") or 0))

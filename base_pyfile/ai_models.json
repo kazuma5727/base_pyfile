@@ -15,6 +15,17 @@
         ],
         "fallback": ["qwen2.5-coder:3b", "deepseek-r1:1.5b"]
     },
+    "translation": {
+        "min_chars": 1,
+        "target_language": "ja",
+        "tiers": [
+            { "max_chars": 200, "model": "qwen2.5:0.5b" },
+            { "max_chars": 1000, "model": "qwen3.5:9b" },
+            { "max_chars": 4000, "model": "gpt-oss:20b" },
+            { "max_chars": null, "model": "glm-5.3-flash:cloud" }
+        ],
+        "fallback": ["qwen2.5-coder:3b", "deepseek-r1:1.5b"]
+    },
     "agent": {
         "model": "qwen3.8:latest",
         "fallback": ["gemma4:26b", "qwen2.5-coder:3b", "deepseek-r1:1.5b", "glm-5.3-flash:cloud"],
