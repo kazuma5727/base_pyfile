@@ -1,41 +1,9 @@
-from pathlib import Path
+"""Legacy setup.py shim.
 
-from setuptools import find_packages, setup
+パッケージ設定は pyproject.toml に集約している。古いツールや
+`python setup.py ...` からもビルドできるようにこのファイルだけ残している。
+"""
 
-# Settings
-FILE = Path(__file__).resolve()
-PARENT = FILE.parent  # root directory
-try:
-    import base_pyfile
-    # mypackage.__version__ を取得する
-    version = base_pyfile.__version__
-except:
-    version = "0.0.0"
+from setuptools import setup
 
-
-def parse_requirements(file_path: Path):
-    """
-    Parse a requirements.txt file, ignoring lines that start with '#' and any text after '#'.
-
-    Args:
-        file_path (str | Path): Path to the requirements.txt file.
-
-    Returns:
-        (List[str]): List of parsed requirements.
-    """
-
-    requirements = []
-    for line in Path(file_path).read_text().splitlines():
-        line = line.strip()
-        if line and not line.startswith("#"):
-            requirements.append(line.split("#")[0].strip())
-
-    return requirements
-
-
-setup(
-    name="base_pyfile",
-    version=version,
-    packages=find_packages(),
-    install_requires=parse_requirements(PARENT / "requirements.txt"),
-)
+setup()

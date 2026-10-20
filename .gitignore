@@ -1,4 +1,8 @@
-__pycache__
+__pycache__/
+*.py[cod]
+.pytest_cache/
+build/
+dist/
+*.egg-info/
 kivy_templates.jpg
-pyproject.toml
 .freebuff

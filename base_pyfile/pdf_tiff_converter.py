@@ -210,44 +210,16 @@ def pdf_to_tiff(pdf_path: str, output_tiff: str = None) -> None:
 if __name__ == "__main__":
     logger = make_logger(handler=get_log_handler(10))
 
-    # PDFまたはTIFFをPNGに変換
-    # input_path = 'path/to/your/file.pdf'  # または 'path/to/your/file.tiff'
-    # output_folder = 'path/to/output/folder'
-    # png_name = 'output_image_name'
-    for i in range(2, 10):
-        print(i)
-        convert_to_png(rf"C:\組基\2024年\プレス\P-2024070{i}.pdf")
+    # 実際のパスに置き換えて実行する
+    # PDF または TIFF を PNG に変換
+    # convert_to_png("path/to/your/file.pdf", "path/to/output/folder")
 
-    # # 画像をPDFに変換
-    # image_files = ['path/to/your/image1.png', 'path/to/your/image2.png']
-    # output_pdf = 'path/to/output/file.pdf'
-    # image_to_pdf(image_files, output_pdf)
-    # pdf_to_tiff(
-    #     r"C:\Users\yamamotok\Downloads\「令和6年度住民税額通知書」確認ガイド.pdf"
-    # )
-    # TIFFをPDFに変換
-    # tiff_path = "path/to/your/file.tiff"
-    # output_pdf = "path/to/output/file.pdf"
-    # tiff_to_pdf(
-    #     r"C:\Users\yamamotok\Downloads\a.tiff",
-    # )
+    # 画像を PDF に変換
+    # image_to_pdf(["path/to/image1.png", "path/to/image2.png"], "path/to/output/file.pdf")
 
-    # # PDFをTIFFに変換
-    # pdf_path = 'path/to/your/file.pdf'
-    # output_tiff = 'path/to/output/file.tiff'
-    # pdf_to_tiff(pdf_path, output_tiff)
+    # PDF を TIFF に変換
+    # pdf_to_tiff("path/to/your/file.pdf", "path/to/output/file.tiff")
 
-
-# if __name__ == "__main__":
-
-# pdf_path = "path/to/your/file.pdf"
-# tiff_path = "path/to/your/file.tif"
-# png_files = ["path/to/your/image1.png", "path/to/your/image2.png"]
-# output_folder = "path/to/output/folder"
-# output_pdf = "path/to/output/file.pdf"
-
-
-# for i in get_files(r"C:\Users\yamamotok\Documents\ss"):
-#     pdf_to_png(i, r"C:\Users\yamamotok\Documents\ss\ab", "image")
-# tiff_to_png(tiff_path, output_folder)
-# image_to_pdf(png_files, output_pdf)
+    # TIFF を PDF に変換
+    # tiff_to_pdf("path/to/your/file.tiff", "path/to/output/file.pdf")
+    pass

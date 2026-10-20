@@ -1,0 +1,76 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "base_pyfile"
+dynamic = ["version"]
+description = "Reusable Windows-oriented Python utilities for logging, files, automation, and PDF conversion"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "Paalon", email = "paalon@email.adress" }]
+keywords = ["utilities", "logging", "automation", "pdf", "windows"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Operating System :: Microsoft :: Windows",
+]
+
+# 軽量な機能だけを core に置く。重い依存は extras で明示的に選ぶ。
+dependencies = [
+    "natsort>=8",
+    "requests>=2.28",
+    "pyperclip>=1.8",
+]
+
+[project.optional-dependencies]
+automation = [
+    "numpy>=1.23",
+    "opencv-python>=4.6",
+    "pyautogui>=0.9.53",
+    "pynput>=1.7",
+]
+web = [
+    "beautifulsoup4>=4.11",
+    "tqdm>=4.64",
+    # web_open は automation_tools と pyautogui を利用する
+    "numpy>=1.23",
+    "opencv-python>=4.6",
+    "pyautogui>=0.9.53",
+    "pynput>=1.7",
+]
+pdf = [
+    "PyMuPDF>=1.22",
+    "Pillow>=9",
+]
+all = [
+    "numpy>=1.23",
+    "opencv-python>=4.6",
+    "pyautogui>=0.9.53",
+    "pynput>=1.7",
+    "beautifulsoup4>=4.11",
+    "tqdm>=4.64",
+    "PyMuPDF>=1.22",
+    "Pillow>=9",
+]
+dev = ["pytest>=7"]
+
+[tool.setuptools]
+# MANIFEST.in は sdist 用。wheel には package-data で明示したファイルだけ入れる
+# （dev サブパッケージを wheel に巻き込まないため false にしている）。
+include-package-data = false
+
+[tool.setuptools.packages.find]
+include = ["base_pyfile*"]
+# 開発中の AI 機能は安定版 wheel に含めない。
+# repo / editable インストールでは base_pyfile/dev/ がそのまま使える。
+exclude = ["base_pyfile.dev*"]
+
+[tool.setuptools.package-data]
+base_pyfile = ["*.json", "*.ini"]
+
+[tool.setuptools.dynamic]
+version = { attr = "base_pyfile._version.__version__" }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

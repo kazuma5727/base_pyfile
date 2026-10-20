@@ -410,10 +410,6 @@ def get_latest_folder(directory: str) -> Path:
 if __name__ == "__main__":
     logger = make_logger(handler=get_log_handler(10))
 
-    # sample
-    # print(get_files(r""))
-    # print(get_all_subfolders(r""))
-    directory = Path(r"F:\Lexar")
-
-    for i in get_all_subfolders(directory):
-        print(i)
+    # sample: カレントディレクトリ以下のサブフォルダーを表示
+    for folder in get_all_subfolders(Path.cwd()):
+        print(folder)

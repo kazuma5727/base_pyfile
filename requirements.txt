@@ -1,10 +1,6 @@
-natsort
-BeautifulSoup4
+# パッケージ本体 + 全機能 + テスト用（開発環境）
+# 依存関係の定義は pyproject.toml に集約している。
+-e .[all,dev]
+
+# ルート直下の補助スクリプト（relearning.py）用
 ruamel.yaml
-tqdm
-pyautogui
-opencv-python
-numba
-pynput
-PyMuPDF
-pyperclip

@@ -1,6 +1,31 @@
 # base_pyfile
 便利ツール
 
+## インストール
+
+```bash
+pip install .                     # 安定版コア（ログ・パス・ファイル）
+pip install -e ".[all,dev]"       # 開発用（安定版全機能 + 開発中AI + pytest）
+pip install ".[automation]"       # 画像・マウス自動化（cv2 / pyautogui / pynput）
+pip install ".[web]"              # ブラウザ操作（automation の依存も含む）
+pip install ".[pdf]"              # PDF / TIFF 変換（PyMuPDF / Pillow）
+pip install ".[all]"              # 安定版の全機能
+```
+
+コアだけなら cv2 / PyMuPDF / pyautogui はインストールされません。必要な機能の extras を選んでください。
+
+## 安定版と開発中機能
+
+| 区分 | 置き場所 | 通常の `pip install .` | 使い方 |
+| --- | --- | --- | --- |
+| 安定版 | `base_pyfile/` | 含まれる | `from base_pyfile import make_logger` |
+| 開発中のAI | `base_pyfile/dev/` | **含まれない** | `pip install -e .` かリポジトリ直下で `from base_pyfile import dispatch` / `from base_pyfile.dev import dispatch` |
+| QRreader | リポジトリ直下 `QRreader.py` | 含まれない | 単体スクリプトとして実行（後述） |
+
+- `ai_router` / `ai_clipboard` / `ai_corrector` / `ai_translator` / `modle_edit` / `ai_models.json` は開発中のため `base_pyfile/dev/` に分離しています。
+- リポジトリ直下や `pip install -e .` の環境では、後方互換のため `from base_pyfile import dispatch` もそのまま使えます。
+- CLI は `python -m base_pyfile.dev.ai_clipboard <mode>` です（`ai_clipboard.bat` もこちらを呼びます）。
+
 ---
 
 ## AI・エージェント向けクイックリファレンス
@@ -10,25 +35,27 @@
 ### AIが守るべき import ルール
 - 必ず `from base_pyfile import <名前>` の形で import する。`from file_manager import ...` のようなモジュール直下の import はパッケージとしては解決されない（過去の名残で、内部で一部使われていたが修正済み）。
 - パッケージ内で相互参照する場合も `from base_pyfile.xxx import yyy` とフルパスで書く。
+- 開発中AI（`base_pyfile/dev/`）の内部参照は `from base_pyfile.dev.xxx import yyy`。安定版の `__init__.py` に dev の名前を直接書き足さない（dev があるときだけ自動でマージされる）。
 - 重い依存が必要な機能（画像・ブラウザ・PDF）は、呼び出し側の関数の中で import してよい（遅延importの推奨パターン）。
 
 ### 機能と依存の対応表
+AI 関連（`ai_router` / `ai_clipboard` / `ai_corrector` / `ai_translator`）は開発中のため `base_pyfile/dev/` にあり、通常の `pip install .` には含まれません。editable インストールかリポジトリ直下で使ってください。
+
 | やりたいこと | importする名前 | 元モジュール | 追加で必要な主な依存 |
 | --- | --- | --- | --- |
 | ログ設定 | `make_logger` / `get_log_handler` | `log_setting` | なし（標準ライブラリのみ） |
 | 実行時間の計測 | `timer` / `logger_timer` | `function_timer` | なし |
 | パス操作・連番 | `unique_path` / `make_directory` / `get_all_files` など | `path_manager` | `natsort`（無くても動作、並び順が劣化） |
 | テキスト読み書き | `read_text_file` / `write_file` | `file_manager` | なし |
-| LLMの振り分け・生成 | `route_to_model` / `dispatch` / `generate` | `ai_router` | `requests` + Ollamaサーバー |
-| クリップボードAI | `watch_clipboard` / `process_clipboard_once` | `ai_clipboard` | `pyperclip`（自動貼付は `pyautogui`） |
-| 誤字脱字の校正 | `correct_text` / `select_model_by_length` | `ai_corrector` | `requests` + Ollamaサーバー |
-| 翻訳（既定は日本語へ） | `translate_text` / `build_translation_prompt` | `ai_translator` | `requests` + Ollamaサーバー |
+| LLMの振り分け・生成（開発中） | `route_to_model` / `dispatch` / `generate` | `dev/ai_router` | `requests` + Ollamaサーバー |
+| クリップボードAI（開発中） | `watch_clipboard` / `process_clipboard_once` | `dev/ai_clipboard` | `pyperclip`（自動貼付は `pyautogui`） |
+| 誤字脱字の校正（開発中） | `correct_text` / `select_model_by_length` | `dev/ai_corrector` | `requests` + Ollamaサーバー |
+| 翻訳・既定は日本語へ（開発中） | `translate_text` / `build_translation_prompt` | `dev/ai_translator` | `requests` + Ollamaサーバー |
 | マウス・画像自動化 | `move_and_click` / `search_color` など | `automation_tools` | `opencv-python` `numpy` `pyautogui` `pynput` |
 | ブラウザ操作 | `open_page` / `get_urls` / `tab_delete` | `web_open` | `requests` `beautifulsoup4` `tqdm` `pyautogui` |
 | PDF/TIFF変換 | `pdf_to_png` / `tiff_to_pdf` など | `pdf_tiff_converter` | `PyMuPDF` `Pillow` |
-| エージェント実行 | `run_agent` / `run_repl` | `agent` | **新規作成中（未実装）** |
 
-> `run_agent` / `run_repl` は現在 `base_pyfile/agent.py` を新規作成中です。アクセスするまではエラーになりませんが、モジュールが無い間は import できません。
+> `run_agent` / `run_repl` は未実装のため、現在は公開 API（`__all__`）に含めていません。`base_pyfile/agent.py` を追加した時点で再登録します。
 
 ### 各機能の最小例
 ```python
@@ -43,6 +70,7 @@ print(read_text_file("out/memo.txt"))  # UTF-8/SJIS等を自動判別
 ```
 
 ```python
+# 開発中AI（リポジトリ/editable でのみ利用可）
 from base_pyfile import route_to_model, dispatch
 
 # 振り分け先だけを決める（Ollamaが必要）
@@ -54,7 +82,7 @@ print(result["model"], result["answer"])
 ```
 
 ### 誤字脱字の校正（コピー → 貼り付けで直す）
-`ai_corrector` を使うと、クリップボードの中身を校正してそのまま書き戻せます。使うモデルは **文字数**で決まり、`ai_models.json` の `correction.tiers`（`max_chars` → `model`）で設定します。
+`ai_corrector` を使うと、クリップボードの中身を校正してそのまま書き戻せます。使うモデルは **文字数**で決まり、`base_pyfile/dev/ai_models.json` の `correction.tiers`（`max_chars` → `model`）で設定します。
 
 ```python
 from base_pyfile import correct_text, process_clipboard_once
@@ -69,7 +97,7 @@ process_clipboard_once(mode="correct")
 
 ```bash
 # クリップボードを監視し、コピーのたびに自動で校正（Ctrl+Cで停止）
-python -m base_pyfile.ai_clipboard correct
+python -m base_pyfile.dev.ai_clipboard correct
 ```
 
 - `watch_clipboard(mode="correct")` / `process_clipboard_once(mode="correct")` で校正モードになります（既定は `"answer"` で従来どおり回答生成）。
@@ -91,7 +119,7 @@ python -m base_pyfile.ai_clipboard correct
 ```
 
 ### 翻訳（コピー → 貼り付けで翻訳）
-`ai_translator` を使うと、クリップボードの中身を指定言語へ翻訳してそのまま書き戻せます。**既定は日本語へ翻訳**です。使うモデルは `ai_corrector` と同じく文字数で決まり、`ai_models.json` の `translation.tiers` で設定します。
+`ai_translator` を使うと、クリップボードの中身を指定言語へ翻訳してそのまま書き戻せます。**既定は日本語へ翻訳**です。使うモデルは `ai_corrector` と同じく文字数で決まり、`base_pyfile/dev/ai_models.json` の `translation.tiers` で設定します。
 
 ```python
 from base_pyfile import translate_text, process_clipboard_once
@@ -109,10 +137,10 @@ process_clipboard_once(mode="translate")
 
 ```bash
 # クリップボードを監視し、コピーのたびに自動で日本語へ翻訳（Ctrl+Cで停止）
-python -m base_pyfile.ai_clipboard translate
+python -m base_pyfile.dev.ai_clipboard translate
 
 # 翻訳先の言語を指定する（例: 英語へ）
-python -m base_pyfile.ai_clipboard translate en
+python -m base_pyfile.dev.ai_clipboard translate en
 ```
 
 - `watch_clipboard(mode="translate")` / `process_clipboard_once(mode="translate")` で翻訳モードになります（既定は `"answer"`）。
@@ -145,10 +173,20 @@ ai_clipboard.bat -honyaku en    REM 翻訳先の言語を指定（既定は ja=�
 ai_clipboard.bat -help          REM 使い方を表示
 ```
 
-- 内部では `python -m base_pyfile.ai_clipboard <mode>` を呼んでいるだけです（`-honyaku`→`translate`、`-gojidatuji`→`correct`、`-kaitou`→`answer`）。
+- 内部では `python -m base_pyfile.dev.ai_clipboard <mode>` を呼んでいるだけです（`-honyaku`→`translate`、`-gojidatuji`→`correct`、`-kaitou`→`answer`）。
 - 先頭の `-` は省略可（`honyaku` でも起動できます）。
 - Python は PATH 上の `python` を優先し、無ければ `py` ランチャーを使います。特定のPythonを使いたい場合は bat 内の `set "PY=python"` を書き換えてください。
 - bat は自身のフォルダを作業ディレクトリにする（`cd /d "%~dp0"`）ため、`base_pyfile` パッケージが import できます。デスクトップ等からショートカットを張る場合は、この bat 本体を指してください。
+
+### QRreader（独立スクリプト・開発中）
+リポジトリ直下の `QRreader.py` は、Windows のクリップボードを監視して QR コードを見つけたら URL をブラウザで開く単体ツールです。パッケージには含まれないため、エラーが出ても `pip install` した環境には影響しません。
+
+```bash
+python -m pip install Pillow pyzbar
+python QRreader.py
+```
+
+「Windows + Shift + S」で QR コードをキャプチャすると、自動で URL が開きます。停止は Ctrl+C。`pyzbar` の DLL が見つからない環境ではエラーになるため、その場合は別の QR ライブラリへの置き換えを検討してください。
 
 ### 動作の要点（AIがハマりやすい点）
 - `make_logger()` を**同じロガー名で複数回呼んでも、ハンドラは置き換え**られ、ログが二重出力されません。`level` 引数が常に優先されます。
@@ -157,24 +195,24 @@ ai_clipboard.bat -help          REM 使い方を表示
 - `read_text_file()` は存在しないファイルに対して例外を投げず、空文字（または空リスト）を返します。
 - `unique_path()` は「同じパスには同じ接尾辞を再利用」するキャッシュを最大 `path_manager.MAX_EXISTING_FILES`（既定1024）件まで保持し、古いものから捨てます。`reset_existing_files()` で明示的にクリアできます。
 - `make_directory(path, is_file=None)` の `is_file` を省略すると、名前にドットを含むかで自動判定します。ドット入りのフォルダ名など誤判定しうる場合は `is_file=` を明示してください。
-- `ai_router.generate()` のタイムアウト既定は `GENERATE_TIMEOUT`（120秒）です。一覧取得など軽い問い合わせは `LIST_MODELS_TIMEOUT`（5秒）を使います。生成はモデルのロードを含むと時間がかかるため、短いタイムアウトで `answer=None` になりがちでした（修正済み）。
+- 開発中 `ai_router.generate()` のタイムアウト既定は `GENERATE_TIMEOUT`（120秒）です。一覧取得など軽い問い合わせは `LIST_MODELS_TIMEOUT`（5秒）を使います。生成はモデルのロードを含むと時間がかかるため、短いタイムアウトで `answer=None` になりがちでした（修正済み）。
 - `automation_tools.move_and_click()` / `search_color()` は **引数を省略すると「呼び出した瞬間」のマウス位置**を使います（既定値を `None` にして関数内で取得する方式に修正済み）。
 - `web_open` の座標・色は意味のある定数（`DEVICE_TOOLBAR_TOGGLE_XY` など）として `web_open.py` 冒頭にまとめています。解像度やブラウザUIが変わったらそこを調整します。
-- `ai_clipboard.watch_clipboard()` は無限ループです。`stop_after=N` で回数を制限できます。
+- 開発中 `ai_clipboard.watch_clipboard()` は無限ループです。`stop_after=N` で回数を制限できます。
 
 ### テスト
-軽量モジュールの回帰テストは `tests/test_base_pyfile.py` にあります。
+軽量モジュールの回帰テストは `tests/test_base_pyfile.py`（安定版）と `tests/test_dev_ai.py`（開発中AI）にあります。
 ```bash
 python -m pytest tests -q
 ```
-→ 現在 26 件が通過します。重い依存（Ollama・cv2・PyMuPDF など）は不要です。
+→ 重い依存（Ollama・cv2・PyMuPDF など）は不要です。開発中AIのテストはリポジトリ/editable 環境でのみ動きます。
 # log_setting.py
 log_settingは、Pythonのloggingモジュールを使用して、ログを設定するためのユーティリティモジュールです。
 
 ## 使い方
 以下のようにmake_logger()関数を呼び出すことで、loggerオブジェクトを取得できます。
 ```python
-from log_setting import make_logger
+from base_pyfile import make_logger
 
 logger = make_logger()
 logger.debug("デバッグ")
@@ -245,7 +283,7 @@ function_timer.pyはPythonの関数の実行時間を測定してログ出力す
 ## timerデコレーター
 timerデコレーターを関数に適用すると、関数の実行時間を標準出力に表示します。
 ```python
-from function_timer import timer
+from base_pyfile import timer
 
 @timer
 def my_function():
@@ -255,7 +293,7 @@ def my_function():
 logger_timerデコレーターを関数に適用すると、関数の実行時間をログ出力します。
 ```python
 import logging
-from function_timer import logger_timer
+from base_pyfile import logger_timer
 
 logger = logging.getLogger(__name__)
 
@@ -272,7 +310,7 @@ def my_function():
 ## サンプルコード
 以下のサンプルコードでは、フィボナッチ数列を計算する関数fibonacciに、timerデコレーターとlogger_timerデコレーターを適用しています。
 ```python
-from function_timer import timer, logger_timer
+from base_pyfile import timer, logger_timer
 
 @timer
 @logger_timer(n=10)
@@ -373,10 +411,12 @@ test/
 [    'test/dir1',    'test/dir1/sub1',    'test/dir2',    'test/dir2/sub2']
 ```
 # ai_router.py
+以下は開発中AI（`base_pyfile/dev/`）の説明です。通常の `pip install .` には含まれません。リポジトリ直下か `pip install -e .` の環境で使ってください。
+
 ai_routerは、渡されたテキストを「どのローカルLLMに処理させるか」判断し、選んだモデルへ実際に投げるための振り分け（ルーティング）モジュールです。Ollamaサーバーとの通信もこのモジュールが担当します。
 
 ## 概要
-1. `ai_models.json` から各モデルの得意・不得意を読み込む
+1. `base_pyfile/dev/ai_models.json` から各モデルの得意・不得意を読み込む
 2. Ollama（`/api/tags`）に問い合わせ、実際にインストール済みのモデルだけを候補に絞る
 3. ルーターモデル（`router.preferred`、無ければ `router.fallback`）に入力内容を分類させ、ラベル（記号）を1つ選ばせる
 4. 選ばれたモデルへ入力内容をそのまま渡して生成する（`dispatch`）
@@ -412,8 +452,8 @@ print(result["model"], result["answer"], result["total_ms"])
 
 モデル名の正解は `tev1:0.8b` ですが、以前 `qwen2.5:0.5b` を使っていた環境もあるため、`router.preferred` / `router.fallback` に従って `resolve_model()` が利用可能なルーターモデルを選びます。振り分け先のモデルが未インストールだった場合は `router.default_target` へ切り替えます。
 
-# ai_models.json
-ai_models.jsonは、`ai_router` が振り分け判断に使うモデル特性の定義ファイルです。各モデルの得意・不得意・用途を記述しておくことで、振り分け先の判断材料になります。
+# base_pyfile/dev/ai_models.json
+base_pyfile/dev/ai_models.json は、`ai_router` が振り分け判断に使うモデル特性の定義ファイルです。各モデルの得意・不得意・用途を記述しておくことで、振り分け先の判断材料になります。
 
 ## 構造
 - `router`：振り分けの設定
@@ -449,4 +489,4 @@ ai_models.jsonは、`ai_router` が振り分け判断に使うモデル特性の
 ```
 
 ## モデルを追加する
-`models` に要素を追加し、`name` をOllama上のモデル名（`ollama list` で確認）に合わせます。インストールされていないモデルは自動的に候補から除外されます。プログラム側の編集は不要で、`ai_models.json` だけで振り分け先の候補を変更できます。
+`models` に要素を追加し、`name` をOllama上のモデル名（`ollama list` で確認）に合わせます。インストールされていないモデルは自動的に候補から除外されます。プログラム側の編集は不要で、`base_pyfile/dev/ai_models.json` だけで振り分け先の候補を変更できます。

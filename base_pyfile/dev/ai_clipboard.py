@@ -24,9 +24,9 @@ from typing import Any, Dict, Optional
 import pyperclip
 
 # --- 独自モジュールのインポート ---
-from base_pyfile.ai_corrector import correct_text
-from base_pyfile.ai_router import dispatch
-from base_pyfile.ai_translator import DEFAULT_TARGET_LANGUAGE, translate_text
+from base_pyfile.dev.ai_corrector import correct_text
+from base_pyfile.dev.ai_router import dispatch
+from base_pyfile.dev.ai_translator import DEFAULT_TARGET_LANGUAGE, translate_text
 from base_pyfile.log_setting import get_log_handler, make_logger
 
 # --- ロガーの初期設定 ---
@@ -209,7 +209,7 @@ def watch_clipboard(
 
 
 def main() -> None:
-    # 使い方: python -m base_pyfile.ai_clipboard [answer|correct|translate] [言語]
+    # 使い方: python -m base_pyfile.dev.ai_clipboard [answer|correct|translate] [言語]
     args = sys.argv[1:]
     mode = args[0] if args else "answer"
     if mode not in VALID_MODES:

@@ -8,35 +8,25 @@
 インストールされていなくても、log_setting や path_manager だけを
 使いたい利用者は問題なくそれらを利用できます。
 
+安定版の公開名はこのファイルで管理し、開発中の AI 機能は
+`base_pyfile/dev/` に分離しています。通常の `pip install .` で作られる
+wheel には dev が含まれず、リポジトリ直下や `pip install -e .` の
+editable インストールのときだけ、後方互換のため公開名に追加されます。
+
 使い方:
-    from base_pyfile import make_logger, unique_path, dispatch
-    # ↑ アクセスした名前のモジュールだけが読み込まれる
+    from base_pyfile import make_logger, unique_path
+
+    # 開発環境（リポジトリ/editable）では AI 機能も従来どおり使える
+    from base_pyfile import dispatch
 """
 
 import importlib
 from typing import Any, Dict
 
-# 公開する名前（この一覧は後方互換のために明示的に保持する）
+from base_pyfile._version import __version__
+
+# 安定版として公開する名前（この一覧は後方互換のために明示的に保持する）
 __all__ = [
-    "run_agent",
-    "run_repl",
-    "dispatch",
-    "generate",
-    "get_available_profiles",
-    "is_model_installed",
-    "list_installed_models",
-    "load_model_profiles",
-    "resolve_model",
-    "route_to_model",
-    "paste_answer",
-    "process_clipboard_once",
-    "watch_clipboard",
-    "process_text",
-    "correct_text",
-    "build_correction_prompt",
-    "select_model_by_length",
-    "translate_text",
-    "build_translation_prompt",
     "fast_click",
     "full_templatematching",
     "learning_materials",
@@ -68,31 +58,8 @@ __all__ = [
 
 # 公開名 -> 定義モジュールの対応表。
 # __all__ に未掲載でも従来から import できていたもの（PDF系）も含める。
+# AI 関連（base_pyfile/dev/）は下で自動的にマージする。
 _MODULE_OF: Dict[str, str] = {
-    # ai_router
-    "dispatch": "base_pyfile.ai_router",
-    "generate": "base_pyfile.ai_router",
-    "get_available_profiles": "base_pyfile.ai_router",
-    "is_model_installed": "base_pyfile.ai_router",
-    "list_installed_models": "base_pyfile.ai_router",
-    "load_model_profiles": "base_pyfile.ai_router",
-    "resolve_model": "base_pyfile.ai_router",
-    "route_to_model": "base_pyfile.ai_router",
-    # agent（新規作成中。未実装でもアクセスするまでエラーにしない）
-    "run_agent": "base_pyfile.agent",
-    "run_repl": "base_pyfile.agent",
-    # ai_clipboard
-    "paste_answer": "base_pyfile.ai_clipboard",
-    "process_clipboard_once": "base_pyfile.ai_clipboard",
-    "watch_clipboard": "base_pyfile.ai_clipboard",
-    "process_text": "base_pyfile.ai_clipboard",
-    # ai_corrector（文字数に応じた誤字脱字の校正）
-    "correct_text": "base_pyfile.ai_corrector",
-    "build_correction_prompt": "base_pyfile.ai_corrector",
-    "select_model_by_length": "base_pyfile.ai_corrector",
-    # ai_translator（文字数に応じた翻訳。既定は日本語へ）
-    "translate_text": "base_pyfile.ai_translator",
-    "build_translation_prompt": "base_pyfile.ai_translator",
     # automation_tools（cv2 / pyautogui / pynput が必要）
     "fast_click": "base_pyfile.automation_tools",
     "full_templatematching": "base_pyfile.automation_tools",
@@ -135,6 +102,18 @@ _MODULE_OF: Dict[str, str] = {
     "tiff_to_png": "base_pyfile.pdf_tiff_converter",
 }
 
+# 開発中機能（base_pyfile/dev/）の公開名を取り込む。
+# 安定版 wheel には dev が含まれないため、ImportError になった場合は
+# 安定版の名前だけを公開する。
+try:
+    from base_pyfile.dev import __all__ as _dev_all
+    from base_pyfile.dev import _MODULE_OF as _dev_module_of
+except ImportError:
+    pass
+else:
+    __all__ = list(__all__) + [name for name in _dev_all if name not in __all__]
+    _MODULE_OF = {**_MODULE_OF, **_dev_module_of}
+
 
 def __getattr__(name: str) -> Any:
     """未定義の属性へアクセスされたときに、対応モジュールを遅延読み込みする。
@@ -157,10 +136,6 @@ def __dir__():
     return sorted(set(globals()) | set(__all__))
 
 
-# パッケージ内のモジュール数を数える
-num_modules = len(__all__)
-
-# バージョン番号を更新
-tens_place = num_modules // 10
-ones_place = num_modules % 10
-__version__ = f"{tens_place}.{ones_place}.4"
+# バージョンは base_pyfile/_version.py で管理する。
+# 以前は __all__ の件数から自動計算していたが、公開名を増減するだけで
+# バージョンが変わってしまうため、明示的な値に変更した。

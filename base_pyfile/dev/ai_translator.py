@@ -14,8 +14,8 @@ from logging import NullHandler, getLogger
 from typing import Any, Dict, List, Optional
 
 # --- 独自モジュールのインポート ---
-from base_pyfile.ai_corrector import _clean_model_output, select_model_by_length
-from base_pyfile.ai_router import (
+from base_pyfile.dev.ai_corrector import _clean_model_output, select_model_by_length
+from base_pyfile.dev.ai_router import (
     GENERATE_TIMEOUT,
     LIST_MODELS_TIMEOUT,
     generate,

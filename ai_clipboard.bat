@@ -52,7 +52,9 @@ echo  そのまま Ctrl+V で貼り付けられます。停止は Ctrl+C。
 echo ============================================================
 echo.
 
-"%PY%" -m base_pyfile.ai_clipboard %MODE% %LANG%
+REM 開発中モジュール（base_pyfile/dev/）を呼ぶ。editable インストールか
+REM リポジトリ直下での実行が必要。
+"%PY%" -m base_pyfile.dev.ai_clipboard %MODE% %LANG%
 
 echo.
 echo 終了しました。
