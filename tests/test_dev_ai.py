@@ -196,6 +196,30 @@ def test_translate_text_keeps_original_on_failure(monkeypatch):
     assert result["changed"] is False
 
 
+def test_translate_text_uses_profile_target_language(monkeypatch):
+    """target_language 省略時は ai_models.json 側の設定を使うこと。"""
+    profiles = {
+        **PROFILES_FOR_TRANSLATION,
+        "translation": {
+            **PROFILES_FOR_TRANSLATION["translation"],
+            "target_language": "en",
+        },
+    }
+    prompts = []
+
+    def fake_generate(prompt, **kwargs):
+        prompts.append(prompt)
+        return "hello", 1.0
+
+    monkeypatch.setattr(ai_translator, "generate", fake_generate)
+    result = ai_translator.translate_text(
+        "こんにちは", profiles=profiles, model="dummy"
+    )
+
+    assert result["target_language"] == "en"
+    assert "英語" in prompts[0]
+
+
 def test_ai_clipboard_translate_replacement():
     assert ai_clipboard._replacement_of({"translated": "x"}, "translate") == "x"
     assert ai_clipboard._replacement_of({"corrected": "y"}, "correct") == "y"

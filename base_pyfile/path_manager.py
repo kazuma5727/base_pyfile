@@ -1,6 +1,5 @@
 import os
 import re
-from functools import cache
 from logging import NullHandler, getLogger
 from pathlib import Path
 from typing import Dict, List, Optional, Union
@@ -153,31 +152,32 @@ def unique_path(
     return new_path.format(existing_files[file_path])
 
 
-@cache
-def _make_directory(directory):
+def _make_directory(directory: Path) -> None:
+    """ディレクトリを作成する。既に存在する場合は何もしない。
+
+    以前は ``@cache`` で作成済みパスを記憶していたが、作成後に
+    ディレクトリが削除されると再作成できなかったためキャッシュを廃止した。
+    """
     directory.mkdir(parents=True, exist_ok=True)
     logger.debug(f"{directory}のディレクトリを作成しました")
 
 
-def make_directory(path, is_file: Optional[bool] = None):
+def make_directory(path: Union[str, Path], is_file: bool = False) -> Path:
     """指定されたパスのディレクトリを作成します。
 
     Args:
-        path (str or Path): 作成するディレクトリのパス
-        is_file (Optional[bool], optional): path がファイルパスかどうか。
-            None の場合は名前にドットを含むかで自動判定する（従来動作）。
-            ドットを含むディレクトリ名など、自動判定が誤る場合は明示的に指定する。
+        path (str or Path): 作成するディレクトリのパス。
+        is_file (bool, optional): True の場合、``path`` をファイルパスとみなし、
+            その親ディレクトリを作成します。既定は False（常にディレクトリとして扱う）。
+            従来の「名前にドットを含むかで自動判定」は、``folder.with.dot`` の
+            ようなディレクトリ名を誤判定するため廃止しました。ファイルパスを
+            渡す場合は明示的に ``is_file=True`` を指定してください。
 
     Returns:
-        str or Path: 渡されたパスをそのまま返します。
+        Path: 渡されたパスをそのまま返します。
     """
     path_obj = Path(path)
-    if is_file is None:
-        is_file = "." in path_obj.name
-    if is_file:
-        directory = path_obj.parent.absolute()
-    else:
-        directory = path_obj.absolute()
+    directory = path_obj.parent.absolute() if is_file else path_obj.absolute()
     _make_directory(directory)
 
     return path_obj

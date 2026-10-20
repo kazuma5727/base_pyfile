@@ -8,7 +8,6 @@
 
 # --- 標準ライブラリのインポート ---
 import datetime
-import os
 import shutil
 from logging import NullHandler, getLogger
 from pathlib import Path
@@ -58,8 +57,9 @@ def read_text_file(
         logger.warning(f"'{file_path}' が存在しないか、ファイルではありません。")
         return _empty_result()
 
-    # 試行するエンコーディングのリスト
-    encodings = ["utf-8", "Shift_JIS", "euc_jp", "iso2022_jp", "cp932"]
+    # 試行するエンコーディングのリスト。
+    # utf-8-sig を先に試すことで、BOM付きUTF-8もBOMを除去して読める。
+    encodings = ["utf-8-sig", "utf-8", "Shift_JIS", "euc_jp", "iso2022_jp", "cp932"]
     text = ""
     used_encoding = ""
 
@@ -115,7 +115,14 @@ def write_file(
         file_encoding (str, optional): 書き込み時の文字エンコーディング。デフォルトは"utf-8"。
         write_mode (str, optional): 書き込みモード。'w'(上書き)または'a'(追記)を指定。デフォルトは'w'。
         backup (bool, optional): Trueの場合、上書き前に内容が異なればバックアップを作成します。デフォルトはTrue。
+
+    Raises:
+        ValueError: ``write_mode`` が 'w' / 'a' / 'x' 以外の場合。
+        OSError: ファイルのオープンまたは書き込みに失敗した場合。
     """
+    if write_mode not in {"w", "a", "x"}:
+        raise ValueError(f"write_mode は 'w' / 'a' / 'x' のいずれかです: {write_mode!r}")
+
     file_path = Path(file_path)
     write_text = str(write_text)
 
@@ -149,8 +156,9 @@ def write_file(
         with file_path.open(mode=write_mode, encoding=file_encoding) as f:
             f.write(write_text)
         logger.debug(f"'{file_path}' にテキストを保存しました (モード: {write_mode})。")
-    except IOError as e:
+    except OSError as e:
         logger.error(f"'{file_path}' への書き込みに失敗しました: {e}")
+        raise
     return file_path
 
 def backup_file(file_path: Union[str, Path], use_datestamp: bool = True) -> None:

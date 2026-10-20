@@ -9,6 +9,7 @@ import time
 import webbrowser
 from logging import NullHandler, getLogger
 from typing import List, Union
+from urllib.parse import urljoin, urlparse
 
 # --- 外部ライブラリのインポート ---
 import pyautogui
@@ -60,7 +61,6 @@ def open_page(
         urls = [urls]
 
     # 処理の前に、特定のポップアップやダイアログが表示されていたら閉じる試み
-    # TODO: この座標(1090, 680)と色(51, 51, 51)が何に対応するのかコメントで説明が必要
     if search_color(*POPUP_CLOSE_RGB, xy=POPUP_CLOSE_PROBE_XY):
         move_and_click(POPUP_CLOSE_PROBE_XY)
 
@@ -74,8 +74,7 @@ def open_page(
                 # F12キーで開発者ツールを開く
                 pyautogui.press("F12")
                 time.sleep(2)
-                # TODO: この座標と色が何を示すのか、より具体的な説明が望ましい
-                # 例: "スマホ表示モードの切り替えボタンが有効かチェック"
+                # 開発者ツールの背景色で、ツールバーが表示済みかを判定する
                 is_dev_tools_ready = search_color(
                     *DEVTOOLS_DARK_RGB, xy=DEVTOOLS_COLOR_PROBE_XY
                 ) or search_color(*DEVTOOLS_LIGHT_RGB, xy=DEVTOOLS_COLOR_PROBE_XY)
@@ -117,16 +116,29 @@ def get_urls(
     """
     try:
         response = requests.get(url, timeout=timeout)
-        response.raise_for_status() # HTTPエラーがあれば例外を発生
+        response.raise_for_status()  # HTTPエラーがあれば例外を発生
         soup = BeautifulSoup(response.content, "html.parser")
-        # `href`属性を持つ`a`タグからリンクを抽出
-        extracted_urls = [a["href"] for a in soup.find_all("a", href=True)]
+
+        # 相対URLを絶対URLへ変換し、http/https のみを重複なしで返す。
+        extracted_urls: List[str] = []
+        seen = set()
+        for anchor in soup.find_all("a", href=True):
+            href = anchor["href"].strip()
+            # 空リンクやページ内アンカーは開く対象にしない。
+            if not href or href.startswith("#"):
+                continue
+            absolute_url = urljoin(url, href)
+            parsed = urlparse(absolute_url)
+            if parsed.scheme not in {"http", "https"}:
+                continue
+            if absolute_url in seen:
+                continue
+            seen.add(absolute_url)
+            extracted_urls.append(absolute_url)
 
         if open_in_browser:
-            # httpから始まる有効なURLのみを開く
-            valid_urls = [u for u in extracted_urls if u.startswith("http")]
-            logger.info(f"{len(valid_urls)}個のリンクをブラウザで開きます。")
-            open_page(valid_urls, delay=delay)
+            logger.info(f"{len(extracted_urls)}個のリンクをブラウザで開きます。")
+            open_page(extracted_urls, delay=delay)
 
         return extracted_urls
 

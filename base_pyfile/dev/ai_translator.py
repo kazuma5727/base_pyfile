@@ -85,7 +85,7 @@ def build_translation_prompt(
 
 def translate_text(
     text: str,
-    target_language: str = DEFAULT_TARGET_LANGUAGE,
+    target_language: Optional[str] = None,
     profiles: Optional[Dict[str, Any]] = None,
     installed: Optional[List[str]] = None,
     model: Optional[str] = None,
@@ -96,7 +96,9 @@ def translate_text(
 
     Args:
         text (str): 翻訳したいテキスト。
-        target_language (str, optional): 翻訳先の言語。既定は "ja"（日本語）。
+        target_language (str, optional): 翻訳先の言語。省略時は
+            ``profiles["translation"]["target_language"]``、それも無ければ
+            "ja"（日本語）を使います。
         profiles (Optional[Dict[str, Any]], optional): モデル特性の辞書。
         installed (Optional[List[str]], optional): インストール済みモデルの一覧。
         model (Optional[str], optional): 使用するモデル名。省略した場合は
@@ -115,6 +117,15 @@ def translate_text(
             - "target_language": 実際に使用した翻訳先の言語
     """
     original = text
+    if profiles is None:
+        profiles = load_model_profiles()
+
+    translation = profiles.get("translation", {}) or {}
+    if not target_language:
+        target_language = (
+            translation.get("target_language") or DEFAULT_TARGET_LANGUAGE
+        )
+
     if not text or not text.strip():
         return {
             "original": original,
@@ -125,10 +136,6 @@ def translate_text(
             "target_language": target_language,
         }
 
-    if profiles is None:
-        profiles = load_model_profiles()
-
-    translation = profiles.get("translation", {}) or {}
     if len(text) < int(translation.get("min_chars", 1) or 1):
         return {
             "original": original,

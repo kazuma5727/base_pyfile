@@ -47,6 +47,7 @@ AI 関連（`ai_router` / `ai_clipboard` / `ai_corrector` / `ai_translator`）�
 | 実行時間の計測 | `timer` / `logger_timer` | `function_timer` | なし |
 | パス操作・連番 | `unique_path` / `make_directory` / `get_all_files` など | `path_manager` | `natsort`（無くても動作、並び順が劣化） |
 | テキスト読み書き | `read_text_file` / `write_file` | `file_manager` | なし |
+| ini設定の読み書き | `read_config` / `save_config` | `ini_filemanager` | なし |
 | LLMの振り分け・生成（開発中） | `route_to_model` / `dispatch` / `generate` | `dev/ai_router` | `requests` + Ollamaサーバー |
 | クリップボードAI（開発中） | `watch_clipboard` / `process_clipboard_once` | `dev/ai_clipboard` | `pyperclip`（自動貼付は `pyautogui`） |
 | 誤字脱字の校正（開発中） | `correct_text` / `select_model_by_length` | `dev/ai_corrector` | `requests` + Ollamaサーバー |
@@ -145,6 +146,7 @@ python -m base_pyfile.dev.ai_clipboard translate en
 
 - `watch_clipboard(mode="translate")` / `process_clipboard_once(mode="translate")` で翻訳モードになります（既定は `"answer"`）。
 - 対応している言語コードは `ai_translator.LANGUAGE_NAMES`（ja / en / zh / ko / de / fr / es / pt）です。未知のコードは指定した文字列がそのままプロンプトに使われます。
+- `target_language` を省略した場合は `translation.target_language`（既定は `"ja"`）を使います。CLI で言語を指定した場合だけ、その指定が優先されます。
 - モデルは `select_model_by_length(..., section="translation")` が選び、未インストールなら `translation.fallback` → `router.default_target` へ自動で切り替えます。
 - モデルが応答しない場合は **元のテキストをそのまま返します**（クリップボードを壊さない）。`changed` で翻訳が行われたかを判定できます。
 
@@ -191,10 +193,10 @@ python QRreader.py
 ### 動作の要点（AIがハマりやすい点）
 - `make_logger()` を**同じロガー名で複数回呼んでも、ハンドラは置き換え**られ、ログが二重出力されません。`level` 引数が常に優先されます。
 - `get_log_handler()` は `file_path` が実在しなくても動きます。標準外のログレベル（例: 25）でも `LEVEL25` としてファイル名に使え、KeyError になりません。
-- `write_file()` は**拡張子が無いパスにだけ**既定の `.txt` を付けます。`data.json` のように既に拡張子があるパスは尊重し、勝手に `.txt` へ書き換えません。戻り値は書き込み後の `Path` です。
-- `read_text_file()` は存在しないファイルに対して例外を投げず、空文字（または空リスト）を返します。
+- `write_file()` は**拡張子が無いパスにだけ**既定の `.txt` を付けます。`data.json` のように既に拡張子があるパスは尊重し、勝手に `.txt` へ書き換えません。戻り値は書き込み後の `Path` です。書き込みに失敗した場合は `OSError` を送出します（以前のように成功したかのようなパスを返しません）。
+- `read_text_file()` は存在しないファイルに対して例外を投げず、空文字（または空リスト）を返します。UTF-8 BOM は除去して読み込みます。
 - `unique_path()` は「同じパスには同じ接尾辞を再利用」するキャッシュを最大 `path_manager.MAX_EXISTING_FILES`（既定1024）件まで保持し、古いものから捨てます。`reset_existing_files()` で明示的にクリアできます。
-- `make_directory(path, is_file=None)` の `is_file` を省略すると、名前にドットを含むかで自動判定します。ドット入りのフォルダ名など誤判定しうる場合は `is_file=` を明示してください。
+- `make_directory(path, is_file=False)` は既定で**常にディレクトリ**として扱います。ファイルパスを渡して親ディレクトリを作りたい場合だけ `is_file=True` を指定してください。ドット入りのディレクトリ名（`folder.with.dot`）も正しく作成できます。
 - 開発中 `ai_router.generate()` のタイムアウト既定は `GENERATE_TIMEOUT`（120秒）です。一覧取得など軽い問い合わせは `LIST_MODELS_TIMEOUT`（5秒）を使います。生成はモデルのロードを含むと時間がかかるため、短いタイムアウトで `answer=None` になりがちでした（修正済み）。
 - `automation_tools.move_and_click()` / `search_color()` は **引数を省略すると「呼び出した瞬間」のマウス位置**を使います（既定値を `None` にして関数内で取得する方式に修正済み）。
 - `web_open` の座標・色は意味のある定数（`DEVICE_TOOLBAR_TOGGLE_XY` など）として `web_open.py` 冒頭にまとめています。解像度やブラウザUIが変わったらそこを調整します。
@@ -354,12 +356,13 @@ existing_image (numpy.ndarray, optional) - 既存の画像ファイルが存在�
 ## 戻り値
 str - 一意になったファイルパス
 ## make_directory関数
-指定されたパスのディレクトリを作成する関数です。cacheデコレータが付与されており、同じパスが複数回渡された場合、再帰的なディレクトリ作成を回避するためにキャッシュされます。
+指定されたパスのディレクトリを作成する関数です。既に存在する場合は何もしません。作成済みパスをキャッシュしないため、ディレクトリを削除した後に再度呼べば作り直せます。
 
 ## 引数
 path (str) - 作成するディレクトリのパス
+is_file (bool, optional) - True の場合はファイルパスとみなし、親ディレクトリを作成します。デフォルトは False。
 ## 戻り値
-str - 渡されたパスをそのまま返します。
+Path - 渡されたパスをそのまま返します。
 ## get_files関数
 フォルダ内にあるすべてのファイルの絶対パスを返す関数です。choice_keyを指定すると、ファイル名にキーワードが含まれているものだけを返します。
 

@@ -26,7 +26,7 @@ import pyperclip
 # --- 独自モジュールのインポート ---
 from base_pyfile.dev.ai_corrector import correct_text
 from base_pyfile.dev.ai_router import dispatch
-from base_pyfile.dev.ai_translator import DEFAULT_TARGET_LANGUAGE, translate_text
+from base_pyfile.dev.ai_translator import translate_text
 from base_pyfile.log_setting import get_log_handler, make_logger
 
 # --- ロガーの初期設定 ---
@@ -140,8 +140,9 @@ def process_clipboard_once(
     result = process_text(text, mode=mode, use_labels=use_labels, **kwargs)
     replacement = _replacement_of(result, mode)
     if replacement:
-        _safe_copy(replacement)
-        if auto_paste:
+        if not _safe_copy(replacement):
+            logger.warning("結果をクリップボードへ書き戻せませんでした。")
+        elif auto_paste:
             paste_answer()
     return result
 
@@ -186,15 +187,21 @@ def watch_clipboard(
                 )
                 replacement = _replacement_of(result, mode)
                 if replacement:
-                    _safe_copy(replacement)
-                    # 自分の出力を新規コピーとして再処理しないよう記録
-                    last = replacement
-                    if auto_paste:
-                        paste_answer()
+                    if _safe_copy(replacement):
+                        # 自分の出力を新規コピーとして再処理しないよう記録
+                        last = replacement
+                        if auto_paste:
+                            paste_answer()
+                        logger.info(
+                            f"[{processed + 1}] {result.get('model')} が処理しました。"
+                        )
+                    else:
+                        # 書き戻しに失敗した場合、同じクリップボード内容を
+                        # 無限に再処理しないよう last は current のままにする。
+                        logger.warning("結果をクリップボードへ書き戻せませんでした。")
+                    # 書き戻しに失敗しても stop_after が機能するよう、
+                    # 生成に成功した時点で処理回数を数える。
                     processed += 1
-                    logger.info(
-                        f"[{processed}] {result.get('model')} が処理しました。"
-                    )
                 else:
                     logger.warning("結果を生成できませんでした。")
 
@@ -222,10 +229,12 @@ def main() -> None:
         print("起動後、何かをコピーすると、校正した内容をクリップボードへ書き戻します。")
         print("そのまま Ctrl+V で、直ったテキストが貼り付けられます。停止は Ctrl+C。")
     elif mode == "translate":
-        # 2つ目の引数で翻訳先の言語を指定できる（例: translate en）
-        target_language = args[1] if len(args) > 1 else DEFAULT_TARGET_LANGUAGE
+        # 2つ目の引数で翻訳先の言語を指定できる（例: translate en）。
+        # 省略時は ai_models.json の translation.target_language に従う。
+        target_language = args[1] if len(args) > 1 else None
         kwargs["target_language"] = target_language
-        print(f"=== クリップボード 翻訳ツール（{target_language} へ） ===")
+        display_language = target_language or "設定ファイルの既定値"
+        print(f"=== クリップボード 翻訳ツール（{display_language} へ） ===")
         print("起動後、何かをコピーすると、翻訳した内容をクリップボードへ書き戻します。")
         print("そのまま Ctrl+V で、翻訳結果が貼り付けられます。停止は Ctrl+C。")
     else:

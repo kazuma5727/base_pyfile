@@ -12,6 +12,7 @@ import ctypes
 import sys
 import webbrowser
 from ctypes import wintypes
+from urllib.parse import urlparse
 
 if sys.platform != "win32":
     raise SystemExit("QRreader.py は Windows 専用です。")
@@ -34,6 +35,15 @@ WM_DESTROY = 0x0002
 is_processing = False
 
 
+def is_http_url(value: str) -> bool:
+    """http:// または https:// のURLだけを許可する。"""
+    try:
+        parsed = urlparse(value)
+    except ValueError:
+        return False
+    return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
+
+
 def scan_qr_from_clipboard():
     """クリップボードの画像を解析してQRコードを探す"""
     global is_processing
@@ -52,6 +62,9 @@ def scan_qr_from_clipboard():
             if detected_barcodes:
                 for barcode in detected_barcodes:
                     url = barcode.data.decode("utf-8")
+                    if not is_http_url(url):
+                        print(f"\n⚠️ URL以外のQRコードのため開きません: {url}")
+                        continue
                     print(f"\n🎉 QRコードを発見しました: {url}")
                     webbrowser.open(url)
                     break
@@ -105,12 +118,17 @@ def start_watcher():
     wc.hInstance = hInstance
     wc.lpszClassName = "QRClipboardWatcherClassUnique"
 
-    user32.RegisterClassW(ctypes.byref(wc))
+    if not user32.RegisterClassW(ctypes.byref(wc)):
+        print("❌ ウィンドウクラスの登録に失敗しました。")
+        return
 
     # メッセージ受信用の見えない隠しウィンドウを作成
     hwnd = user32.CreateWindowExW(
         0, wc.lpszClassName, "QR Watcher", 0, 0, 0, 0, 0, None, None, hInstance, None
     )
+    if not hwnd:
+        print("❌ 監視用ウィンドウの作成に失敗しました。")
+        return
 
     # WindowsのOSに「クリップボードが変わったらこのウィンドウに通知して」と登録
     # OS側で変更があった時だけプログラムが叩かれるため、CPU負荷は0%です

@@ -1,9 +1,7 @@
-import os
-import sys
 import time
 from logging import NullHandler, getLogger
 from pathlib import Path
-from typing import Any, List, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import cv2
 import numpy as np
@@ -166,8 +164,11 @@ def move_and_click(
     logger.debug(f"click({x}, {y})")
     if ctrl:
         pyautogui.keyDown("ctrl")
-        fast_click(x, y)
-        pyautogui.keyUp("ctrl")
+        try:
+            fast_click(x, y)
+        finally:
+            # クリック中に例外が起きても Ctrl が押されたままにならないようにする。
+            pyautogui.keyUp("ctrl")
     else:
         fast_click(x, y)
 
@@ -284,11 +285,36 @@ def specified_color(
     bottom: bool = False,
     threshold: int = 10,
     exclude_radius: int = 70,
-    max_size: int = float("inf"),
+    max_size: float = float("inf"),
     min_size: int = 100,
     found: bool = False,
     save: str = "",
-) -> tuple[int, int] | list[tuple[int, int]]:
+) -> (
+    tuple[int, int]
+    | list[tuple[int, int]]
+    | tuple[tuple[int, int] | list[tuple[int, int]], bool]
+):
+    """指定した色に近い領域の位置を返します。
+
+    Args:
+        RGB (tuple[int, int, int] | list[int] | int): 検出する色のRGB値。
+        G (int, optional): 色の緑成分。RGBがタプルやリストの場合は省略。
+        B (int, optional): 色の青成分。RGBがタプルやリストの場合は省略。
+        image (np.ndarray, optional): 読み込む画像。省略時はスクリーンショットを使用。
+        left_right_upper_Lower (tuple[int, int, int, int], optional): 画像の切り抜き範囲。
+        label_count (int, optional): 検出するラベルの数。1なら単一座標、2以上ならリスト。
+        near_label (tuple[int, int], optional): 指定した座標に最も近いラベルを取得。
+        bottom (bool, optional): True なら領域の下端、False なら中心を返す。
+        threshold (int, optional): 色の許容差。デフォルトは 10。
+        exclude_radius (int, optional): マウスカーソル周辺の除外半径。
+        max_size (float, optional): 検出する最大面積。デフォルトは無限大。
+        min_size (int, optional): 検出する最小面積。デフォルトは 100。
+        found (bool, optional): True の場合、``(座標, 見つかったか)`` を返す。
+        save (str, optional): マスク画像の保存先フォルダ。
+
+    Returns:
+        tuple[int, int] | list[tuple[int, int]]: 検出された位置。
+    """
     if isinstance(RGB, (tuple, list)):
         if len(RGB) != 3:
             raise ValueError("RGBは3つの整数からなるタプルまたはリストでなければなりません。")
@@ -304,6 +330,9 @@ def specified_color(
         image = cv2.cvtColor(np.array(pyautogui.screenshot()), cv2.COLOR_RGB2BGR)
     elif isinstance(image, (str, Path)):
         image = cv2.imread(str(image))
+
+    if image is None:
+        raise ValueError("画像を読み込めませんでした。パスを確認してください。")
 
     if left_right_upper_Lower:
         start_col, end_col, start_row, end_row = left_right_upper_Lower
@@ -329,7 +358,9 @@ def specified_color(
         cv2.circle(mask, (cursor_x, cursor_y), exclude_radius, 0, thickness=-1)
 
     if save:
-        cv2.imwrite(str(Path(save) / "mask.png"), mask)
+        save_path = Path(save)
+        save_path.mkdir(parents=True, exist_ok=True)
+        cv2.imwrite(str(save_path / "mask.png"), mask)
 
     # 連結成分ラベリング
     num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(mask)
@@ -365,21 +396,26 @@ def specified_color(
         else:
             xy_list.append((x + w // 2 + plus_x, y + h // 2 + plus_y))
 
-    if label_count == 1 and xy_list:
-        return xy_list[0]
-    elif label_count == 1 and not xy_list:
+    if label_count == 1 and xy_list and not near_label:
+        ret = xy_list[0]
+        return (ret, True) if found else ret
+    elif label_count == 1 and not xy_list and not near_label:
         x, y = pyautogui.position()
         ret = (x, y) if label_count == 1 else [(x, y)]
         return (ret, False) if found else ret
-    elif label_count > 1:
-        return xy_list
+    elif label_count > 1 and not near_label:
+        return (xy_list, True) if found else xy_list
 
     # near_labelが使われたとき
     if near_label:
-        target_coord = near_label
+        # centroids は切り取り後の画像座標なので、指定座標も同じ系へ変換する。
+        target_coord = (near_label[0] - plus_x, near_label[1] - plus_y)
         min_distance = float("inf")
         closest_label = None
         for i in range(1, num_labels):
+            area = stats[i, cv2.CC_STAT_AREA]
+            if area < min_size or area > max_size:
+                continue
             center = centroids[i]
             distance = np.linalg.norm(np.array(target_coord) - center)
             if distance < min_distance:
@@ -392,12 +428,14 @@ def specified_color(
             w = stats[closest_label, cv2.CC_STAT_WIDTH]
             h = stats[closest_label, cv2.CC_STAT_HEIGHT]
             if bottom:
-                return x + w // 2 + plus_x, y + h + plus_y
+                ret = (x + w // 2 + plus_x, y + h + plus_y)
             else:
-                return x + w // 2 + plus_x, y + h // 2 + plus_y
+                ret = (x + w // 2 + plus_x, y + h // 2 + plus_y)
+            return (ret, True) if found else ret
         else:
             logger.error("指定座標に近いラベルが見つかりませんでした。")
-            return pyautogui.position()
+            ret = pyautogui.position()
+            return (ret, False) if found else ret
 
     # ラベルも近傍も指定されていない場合はランダムに選ぶ
     rows, cols = np.where(mask == 255)
@@ -413,7 +451,8 @@ def specified_color(
         x = cols[rand_index]
         y = rows[rand_index]
 
-    return x + plus_x, y + plus_y
+    ret = (x + plus_x, y + plus_y)
+    return (ret, True) if found else ret
 
 def specified_color_fast_ver(
     RGB: tuple[int, int, int] | list[int] | int,
@@ -426,11 +465,15 @@ def specified_color_fast_ver(
     bottom: bool = False,
     threshold: int = 10,  # 適宜調整
     exclude_radius: int = 70,
-    max_size: int = float("inf"),
+    max_size: float = float("inf"),
     min_size: int = 100,
     found: bool = False,
     save: str = "",
-) -> tuple[int, int]:
+) -> (
+    tuple[int, int]
+    | list[list[int]]
+    | tuple[tuple[int, int] | list[list[int]], bool]
+):
     """
     指定した色を画像内で検出し、その位置を返します。
 
@@ -445,12 +488,13 @@ def specified_color_fast_ver(
         bottom (bool, optional): 最も下にあるピクセルを取得するかどうか。
         threshold (int, optional): 色の距離の閾値。
         exclude_radius (int, optional): マウスカーソル周辺の除外半径。
-        max_size (int, optional): 検出する最大サイズ。デフォルトは無限大。
-        min_size (int, optional): 検出する最小サイズ。デフォルトは100。
-        save (str, optional): マスク画像の保存先パス。
+        max_size (float, optional): 検出する最大面積。デフォルトは無限大。
+        min_size (int, optional): 検出する最小面積。デフォルトは100。
+        found (bool, optional): True の場合、``(座標, 見つかったか)`` を返す。
+        save (str, optional): マスク画像の保存先フォルダ。
 
     Returns:
-        tuple[int, int]: 検出された色の位置。
+        tuple[int, int] | list[list[int]]: 検出された色の位置。
     """
     # RGB値の処理
     if isinstance(RGB, tuple) or isinstance(RGB, list):
@@ -479,6 +523,9 @@ def specified_color_fast_ver(
     elif isinstance(image, str) or isinstance(image, Path):
         image = cv2.imread(str(image))
 
+    if image is None:
+        raise ValueError("画像を読み込めませんでした。パスを確認してください。")
+
     # 画像の一部を切り抜く
     if left_right_upper_Lower:
         start_col, end_col, start_row, end_row = left_right_upper_Lower
@@ -490,8 +537,10 @@ def specified_color_fast_ver(
         plus_x = 0
         plus_y = 0
 
-    # 画像と目標色との距離を計算
-    dist = np.linalg.norm(image - target_color, axis=2)
+    # 画像と目標色との距離を計算する。
+    # uint8 同士の引き算はアンダーフローするため、符号付き整数へ変換する。
+    diff = image.astype(np.int16) - target_color.astype(np.int16)
+    dist = np.linalg.norm(diff, axis=2)
 
     # 一定距離以下のピクセルをマスク
     mask = dist < threshold
@@ -530,13 +579,13 @@ def specified_color_fast_ver(
     result = np.zeros_like(detected_color)
     result[labels != 0] = detected_color[labels != 0]
 
-    dist = np.linalg.norm(result - target_color, axis=2)
+    diff = result.astype(np.int16) - target_color.astype(np.int16)
+    dist = np.linalg.norm(diff, axis=2)
     rows, cols = np.where(dist < threshold)
     if save:
-        cv2.imwrite(
-            str(unique_path(rf"{save}\mask_{{}}.png")),
-            result,
-        )
+        save_dir = Path(save)
+        save_dir.mkdir(parents=True, exist_ok=True)
+        cv2.imwrite(str(unique_path(save_dir / "mask_{}.png")), result)
 
     if not len(cols):
         logger.error("not found")
@@ -552,7 +601,7 @@ def specified_color_fast_ver(
         else:
             return ret
 
-    if label_count:
+    if label_count and not near_label:
         logger.debug(f"label:{label_count} label数: {num_labels}")
         xy_list = []
         # 各連結成分のエリアとラベルをリストに格納
@@ -583,30 +632,33 @@ def specified_color_fast_ver(
             else:
                 xy_list.append([x + w // 2 + plus_x, y + h // 2 + plus_y])
         if label_count == 1 and xy_list:
-            return xy_list[0]
+            ret = tuple(xy_list[0])
+            return (ret, True) if found else ret
 
         elif label_count == 1 and not xy_list:
-            return pyautogui.position()
+            ret = pyautogui.position()
+            return (ret, False) if found else ret
 
         else:
-            return xy_list
+            return (xy_list, True) if found else xy_list
 
     if near_label:
-        target_coord = pyautogui.position()
+        # centroids は切り取り後の画像座標なので、指定座標も同じ系へ変換する。
+        target_coord = (near_label[0] - plus_x, near_label[1] - plus_y)
         # 指定した座標に最も近いラベルを取得
         min_distance = float("inf")
         closest_label = None
         for i in range(1, num_labels):
+            area = stats[i, cv2.CC_STAT_AREA]
+            if area < min_size or area > max_size:
+                continue
             center = centroids[i]
             distance = np.linalg.norm(np.array(target_coord) - center)
             if distance < min_distance:
                 min_distance = distance
                 closest_label = i
 
-        # 最も近いラベルの領域のみを残し、それ以外を黒く塗りつぶす
-        result = np.zeros_like(result)
         if closest_label is not None:
-            result[labels == closest_label] = result[labels == closest_label]
             x = stats[closest_label, cv2.CC_STAT_LEFT]
             y = stats[closest_label, cv2.CC_STAT_TOP]
             width = stats[closest_label, cv2.CC_STAT_WIDTH]
@@ -617,34 +669,40 @@ def specified_color_fast_ver(
             logger.debug(f"中央座標: ({center_x}, {center_y})")
             logger.debug(f"幅: {width}")
             logger.debug(f"高さ: {height}")
-        else:
-            logger.error("指定した座標に有効なラベルが見つかりませんでした。")
-        if bottom:
-            return center_x + plus_x, y + height + plus_y
-        else:
-            return center_x + plus_x, center_y + plus_y
+
+            if bottom:
+                ret = (center_x + plus_x, y + height + plus_y)
+            else:
+                ret = (center_x + plus_x, center_y + plus_y)
+            return (ret, True) if found else ret
+
+        logger.error("指定した座標に有効なラベルが見つかりませんでした。")
+        ret = pyautogui.position()
+        return (ret, False) if found else ret
 
     if bottom:
         bottom_row = np.max(rows)
-        bottom_row_indices = np.where(rows == bottom_row)
+        # np.where はタプルを返すため、[0] でインデックス配列を取り出す。
+        bottom_row_indices = np.where(rows == bottom_row)[0]
         rand_index = np.random.randint(0, len(bottom_row_indices))
-        bottom_col = cols[bottom_row_indices[rand_index]][0]
+        bottom_col = cols[bottom_row_indices[rand_index]]
         x = bottom_col
         y = bottom_row
     else:
         rand_index = np.random.randint(0, len(rows))
         x = cols[rand_index]
         y = rows[rand_index]
-    return x + plus_x, y + plus_y
+    ret = (x + plus_x, y + plus_y)
+    return (ret, True) if found else ret
 
 
 def templates_matching(
-    templates: str | np.ndarray,
-    image: np.ndarray = None,
+    templates: str | Path | np.ndarray,
+    image: Optional[np.ndarray] = None,
     left_right_upper_Lower: tuple = (),
     threshold: float = 0.4,
     found: bool = False,
-) -> tuple[int, int]:
+) -> tuple[int, int] | tuple[tuple[int, int], bool]:
     """
     テンプレートマッチングを用いて画像内のテンプレートの位置を検出します。
 
@@ -652,19 +710,26 @@ def templates_matching(
         templates (str | np.ndarray): テンプレート画像のパスまたはテンプレート画像。
         image (np.ndarray, optional): 検出対象の画像。省略時はスクリーンショットを使用。
         left_right_upper_Lower (tuple, optional): 画像の切り取り範囲 (start_col, end_col, start_row, end_row)。デフォルトは空のタプル。
+        threshold (float, optional): マッチングの閾値。デフォルトは 0.4。
+        found (bool, optional): True の場合、``(座標, 見つかったか)`` を返す。
 
     Returns:
-        tuple[int, int]: 検出されたテンプレートの中心位置。
+        tuple[int, int] | tuple[tuple[int, int], bool]: 検出されたテンプレートの中心位置。
     """
     if image is None:
         image = cv2.cvtColor(np.array(pyautogui.screenshot()), cv2.COLOR_RGB2BGR)
 
-    if isinstance(templates, str):
-        obj = cv2.imread(templates)
+    if isinstance(templates, (str, Path)):
+        obj = cv2.imread(str(templates))
+        if obj is None:
+            raise ValueError(f"テンプレート画像を読み込めませんでした: {templates}")
     elif isinstance(templates, np.ndarray):
         obj = templates
     else:
         raise ValueError("Invalid template type. Must be a file path or a NumPy array.")
+
+    if obj.size == 0 or image.size == 0:
+        raise ValueError("テンプレート画像と検出対象画像は空にできません。")
 
     if left_right_upper_Lower:
         start_col, end_col, start_row, end_row = left_right_upper_Lower
@@ -675,6 +740,12 @@ def templates_matching(
         plus_x = 0
         plus_y = 0
 
+    # 切り取り後の画像でサイズを確認する（切り取り前だけの確認では不十分）。
+    if image.size == 0:
+        raise ValueError("切り取り後の画像が空です。切り取り範囲を確認してください。")
+    if obj.shape[0] > image.shape[0] or obj.shape[1] > image.shape[1]:
+        raise ValueError("テンプレート画像が検出対象画像より大きいため一致しません。")
+
     # テンプレートマッチングアルゴリズム
     map_cc = cv2.matchTemplate(image, obj, cv2.TM_CCOEFF_NORMED)
 
@@ -683,38 +754,50 @@ def templates_matching(
     if max_val > threshold:
         x = int(max_loc[0] + obj.shape[1] // 2) + plus_x
         y = int(max_loc[1] + obj.shape[0] // 2) + plus_y
-    else:
-        logger.error("not found")
-        if found:
-            return pyautogui.position(), False
-        else:
-            return pyautogui.position()
-    return x, y
+        ret = (x, y)
+        return (ret, True) if found else ret
+
+    logger.error("not found")
+    ret = pyautogui.position()
+    return (ret, False) if found else ret
 
 
 def full_templatematching(
-    templates: str | np.ndarray,
-    image: np.ndarray = cv2.cvtColor(
-        np.array(pyautogui.screenshot()), cv2.COLOR_RGB2BGR
-    ),
+    templates: str | Path | np.ndarray,
+    image: Optional[np.ndarray] = None,
     threshold: float = 0.8,
 ) -> list[list[int]]:
-    """
-    テンプレートマッチングを用いて画像内のテンプレートの全ての位置を検出します。
+    """テンプレートマッチングを用いて画像内のテンプレートの全ての位置を検出します。
 
     Args:
-        templates (str | np.ndarray): テンプレート画像のパスまたはテンプレート画像。
-        image (np.ndarray): 検出対象の画像。省略時はスクリーンショットを使用。
+        templates (str | Path | np.ndarray): テンプレート画像のパスまたはテンプレート画像。
+        image (np.ndarray, optional): 検出対象の画像。省略時は「呼び出した瞬間」の
+            スクリーンショットを使用します。渡した画像は変更しません。
         threshold (float): マッチングの閾値。これ以上の値を持つ場所を一致箇所とする。
 
     Returns:
         list[list[int]]: 検出されたテンプレートの中心位置のリスト。
     """
-    if isinstance(templates, str):
-        obj = cv2.imread(templates)
+    # 既定値でスクリーンショットを撮ると import 時に画面をキャプチャしてしまうため、
+    # 必ず関数内で取得する。渡された画像は描画で変更しないようコピーする。
+    if image is None:
+        image = cv2.cvtColor(np.array(pyautogui.screenshot()), cv2.COLOR_RGB2BGR)
+    else:
+        image = np.array(image, copy=True)
 
+    if isinstance(templates, (str, Path)):
+        obj = cv2.imread(str(templates))
+        if obj is None:
+            raise ValueError(f"テンプレート画像を読み込めませんでした: {templates}")
     elif isinstance(templates, np.ndarray):
         obj = templates
+    else:
+        raise ValueError("Invalid template type. Must be a file path or a NumPy array.")
+
+    if obj.size == 0 or image.size == 0:
+        raise ValueError("テンプレート画像と検出対象画像は空にできません。")
+    if obj.shape[0] > image.shape[0] or obj.shape[1] > image.shape[1]:
+        raise ValueError("テンプレート画像が検出対象画像より大きいため一致しません。")
 
     # テンプレートマッチングを実行
     result = cv2.matchTemplate(image, obj, cv2.TM_CCOEFF_NORMED)
@@ -726,7 +809,7 @@ def full_templatematching(
     unique_loc = []
     xy_list = []
 
-    # 一致箇所を元画像にマーキング
+    # 一致箇所を元画像にマーキング（image はコピーなので呼び出し元には影響しない）
     for pt in zip(*loc[::-1]):
         # 重複チェック
         is_unique = True
@@ -738,7 +821,6 @@ def full_templatematching(
                 is_unique = False
                 break
         if is_unique:
-            pyautogui.keyDown("ctrl")
             cv2.rectangle(
                 image,
                 pt,

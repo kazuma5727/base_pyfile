@@ -68,6 +68,8 @@ exclude = ["base_pyfile.dev*"]
 
 [tool.setuptools.package-data]
 base_pyfile = ["*.json", "*.ini"]
+# 通常の wheel には dev を含めないが、将来含める場合に備えて JSON を宣言しておく。
+"base_pyfile.dev" = ["*.json"]
 
 [tool.setuptools.dynamic]
 version = { attr = "base_pyfile._version.__version__" }

@@ -37,6 +37,8 @@ __all__ = [
     "templates_matching",
     "read_text_file",
     "write_file",
+    "read_config",
+    "save_config",
     "logger_timer",
     "timer",
     "get_log_handler",
@@ -72,6 +74,9 @@ _MODULE_OF: Dict[str, str] = {
     # file_manager
     "read_text_file": "base_pyfile.file_manager",
     "write_file": "base_pyfile.file_manager",
+    # ini_filemanager
+    "read_config": "base_pyfile.ini_filemanager",
+    "save_config": "base_pyfile.ini_filemanager",
     # function_timer
     "logger_timer": "base_pyfile.function_timer",
     "timer": "base_pyfile.function_timer",

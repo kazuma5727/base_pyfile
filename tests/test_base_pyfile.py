@@ -9,12 +9,14 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
 import base_pyfile
 from base_pyfile import function_timer
 from base_pyfile.file_manager import read_text_file, write_file
+from base_pyfile.ini_filemanager import read_config, save_config
 from base_pyfile.log_setting import get_log_handler, make_logger
 from base_pyfile.path_manager import make_directory, reset_existing_files, unique_path
 
@@ -26,6 +28,12 @@ def test_public_api_is_registered_and_unique():
     """__all__ の名前は重複せず、遅延importの対応表にも登録されていること。"""
     assert len(base_pyfile.__all__) == len(set(base_pyfile.__all__))
     assert set(base_pyfile.__all__) <= set(base_pyfile._MODULE_OF)
+
+
+def test_ini_functions_are_available_from_top_level():
+    """ini_filemanager の主要関数を base_pyfile 直下から使えること。"""
+    assert base_pyfile.read_config is read_config
+    assert base_pyfile.save_config is save_config
 
 
 def test_version_is_semver():
@@ -140,6 +148,29 @@ def test_make_directory_creates_and_returns(tmp_path):
     assert Path(result) == target
 
 
+def test_make_directory_handles_dotted_name(tmp_path):
+    """ドット入りのディレクトリ名をファイルと誤判定しないこと。"""
+    target = tmp_path / "folder.with.dot"
+    make_directory(target)
+    assert target.is_dir()
+
+
+def test_make_directory_recreates_after_deletion(tmp_path):
+    """作成後に削除しても、再度呼べば作り直せること。"""
+    target = tmp_path / "recreate"
+    make_directory(target)
+    target.rmdir()
+    make_directory(target)
+    assert target.is_dir()
+
+
+def test_make_directory_file_mode_uses_parent(tmp_path):
+    target = tmp_path / "folder.with.dot" / "memo.txt"
+    make_directory(target, is_file=True)
+    assert target.parent.is_dir()
+    assert not target.exists()
+
+
 # ------------------------------------------------------------
 # file_manager
 # ------------------------------------------------------------
@@ -165,3 +196,69 @@ def test_write_file_keeps_explicit_extension(tmp_path):
 
 def test_read_text_file_missing_returns_empty(tmp_path):
     assert read_text_file(tmp_path / "missing.txt") == ""
+
+
+def test_write_file_creates_dotted_parent_directory(tmp_path):
+    file_path = tmp_path / "folder.with.dot" / "memo.txt"
+    write_file(file_path, "hello", backup=False)
+    assert file_path.read_text(encoding="utf-8") == "hello"
+
+
+def test_write_file_raises_on_write_error(tmp_path, monkeypatch):
+    """書き込み失敗を成功したかのように握りつぶさないこと。"""
+    target = tmp_path / "fail.txt"
+    original_open = Path.open
+
+    def failing_open(self, *args, **kwargs):
+        if self == target:
+            raise OSError("write denied")
+        return original_open(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", failing_open)
+    with pytest.raises(OSError, match="write denied"):
+        write_file(target, "x", backup=False)
+
+
+def test_read_text_file_removes_utf8_bom(tmp_path):
+    file_path = tmp_path / "bom.txt"
+    file_path.write_bytes(b"\xef\xbb\xbfhello")
+    assert read_text_file(file_path) == "hello"
+
+
+# ------------------------------------------------------------
+# ini_filemanager
+# ------------------------------------------------------------
+def test_read_config_reads_default_section(tmp_path):
+    ini_file = tmp_path / "settings.ini"
+    ini_file.write_text(
+        "[DEFAULT]\n"
+        "width = 1920\n"
+        "ratio = 1.5\n"
+        "auto_mode = True\n"
+        "negative = -2\n",
+        encoding="utf-8",
+    )
+
+    obj = SimpleNamespace()
+    read_config(obj, ini_file)
+
+    assert obj.width == 1920
+    assert isinstance(obj.width, int)
+    assert obj.ratio == 1.5
+    assert obj.auto_mode is True
+    assert obj.negative == -2
+    assert isinstance(obj.negative, int)
+
+
+def test_save_config_roundtrip(tmp_path):
+    ini_file = tmp_path / "settings.ini"
+    obj = SimpleNamespace(width=1920, height=1080, auto_mode=True, ratio=1.5)
+    save_config(obj, ini_file)
+
+    loaded = SimpleNamespace()
+    read_config(loaded, ini_file)
+
+    assert loaded.width == 1920
+    assert loaded.height == 1080
+    assert loaded.auto_mode is True
+    assert loaded.ratio == 1.5

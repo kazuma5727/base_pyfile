@@ -11,11 +11,11 @@ from logging import (
     Logger,
     NullHandler,
     StreamHandler,
-    basicConfig,
     getLevelName,
     getLogger,
 )
 from pathlib import Path
+from typing import Optional
 
 LOG_LEVEL_NAMES = {50: "CRITICAL", 40: "ERROR", 30: "WARNING", 20: "INFO", 10: "DEBUG"}
 DEFAULT_LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -42,7 +42,7 @@ def _level_name(level: int) -> str:
 
 def get_log_handler(
     log_level: int = WARNING,
-    file_path: Path = Path(sys.argv[0]),
+    file_path: Optional[Path] = None,
     log_folder: str = "",
     log_format: str = DEFAULT_LOG_FORMAT,
 ) -> Handler:
@@ -50,15 +50,18 @@ def get_log_handler(
 
     Args:
         log_level (int, optional): ログレベル。デフォルトは WARNING
-        file_path (Path, optional): ログファイルを保存するファイルのパス。デフォルトは使用したプログラム
+        file_path (Path, optional): ログファイルを保存するファイルのパス。
+            省略時は「呼び出した時点」の ``sys.argv[0]`` を使う。
         log_folder (str, optional): ログフォルダ作成時のパス。推奨は".log"
         log_format (str, optional): ログのフォーマット。デフォルトは DEFAULT_LOG_FORMAT
 
     Returns:
         Handler: 作成されたハンドラ
     """
-    # Pathに正規化しておく（文字列・Pathどちらでも受け付ける）
-    file_path = Path(file_path)
+    # Pathに正規化しておく（文字列・Pathどちらでも受け付ける）。
+    # 既定値を import 時に固定すると sys.argv[0] が変わったとき古い値を使うため、
+    # ここで呼び出し時点の値から解決する。
+    file_path = Path(sys.argv[0]) if file_path is None else Path(file_path)
 
     # ログフォルダが指定された場合、ログフォルダを作成し、ログファイルを作成
     if log_folder:
@@ -109,6 +112,14 @@ def make_logger(
     # 同じログが重複出力されていた。
     for existing_handler in list(logger.handlers):
         logger.removeHandler(existing_handler)
+        if existing_handler is handler:
+            # 呼び出し側が同じハンドラを再利用するケースでは閉じない。
+            continue
+        try:
+            existing_handler.close()
+        except Exception:
+            # ユーザー提供のハンドラなど、close できないものは無視する。
+            logger.debug("既存ハンドラの close に失敗しました", exc_info=True)
 
     # handlerが与えられた場合はそれを使用し、与えられなかった場合はget_log_handler()関数で作成したハンドラを使用
     if handler:
