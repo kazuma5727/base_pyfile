@@ -8,7 +8,10 @@
 
 # --- 標準ライブラリのインポート ---
 import datetime
+import os
 import shutil
+import tempfile
+import time
 from logging import NullHandler, getLogger
 from pathlib import Path
 from typing import List, Optional, Tuple, Union
@@ -160,6 +163,132 @@ def write_file(
         logger.error(f"'{file_path}' への書き込みに失敗しました: {e}")
         raise
     return file_path
+
+
+def _replace_with_retry(
+    source: str,
+    destination: str,
+    retries: int,
+    retry_delay: float,
+) -> None:
+    """``os.replace`` を実行し、Windows の一時的なファイルロックをリトライする。"""
+    last_error: Optional[PermissionError] = None
+    for attempt in range(retries + 1):
+        try:
+            os.replace(source, destination)
+            return
+        except PermissionError as exc:
+            last_error = exc
+            if attempt >= retries:
+                break
+            time.sleep(retry_delay * (2**attempt))
+
+    if last_error is not None:
+        raise last_error
+    raise OSError(f"'{source}' を '{destination}' に置き換えられませんでした。")
+
+
+def atomic_write(
+    file_path: Union[str, Path],
+    data: Union[str, bytes],
+    *,
+    encoding: str = "utf-8",
+    errors: str = "strict",
+    newline: Optional[str] = None,
+    retries: int = 3,
+    retry_delay: float = 0.1,
+    backup: bool = False,
+) -> Path:
+    """ファイルを一時ファイル経由で安全に書き換える。
+
+    同じディレクトリに一時ファイルを作り、``fsync`` してから
+    ``os.replace`` で置き換える。書き込み途中でプロセスが落ちても、
+    元のファイルが途中までの内容になることはない。
+
+    Windows では Excel・OneDrive・ウイルス対策ソフトなどがファイルを
+    一時的に掴み、``PermissionError`` になることがある。その場合は
+    ``retries`` 回まで指数バックオフでリトライする。
+
+    Args:
+        file_path: 書き込み先。拡張子の補完は行わない。
+        data: 書き込む文字列またはバイト列。
+        encoding: ``data`` が文字列のときの文字コード。
+        errors: エンコード時のエラー処理。
+        newline: テキスト書き込み時の改行コード。``None`` なら OS 既定。
+        retries: ``os.replace`` のリトライ回数（初回試行を除く）。
+        retry_delay: リトライの初期待機秒。以降は倍々に増える。
+        backup: True なら置き換え前に ``backup_file`` でバックアップする。
+
+    Returns:
+        書き込み後の :class:`pathlib.Path`。
+
+    Raises:
+        TypeError: ``data`` が str / bytes 以外。
+        ValueError: ``retries`` が負、または ``retry_delay`` が負。
+        OSError: 書き込み・置き換えに失敗した場合。
+    """
+    if not isinstance(data, (str, bytes)):
+        raise TypeError("data は str または bytes で指定してください。")
+    if retries < 0:
+        raise ValueError("retries は 0 以上で指定してください。")
+    if retry_delay < 0:
+        raise ValueError("retry_delay は 0 以上で指定してください。")
+
+    file_path = Path(file_path)
+    make_directory(file_path.parent)
+
+    if backup and file_path.exists():
+        backup_file(file_path)
+
+    fd, temp_name = tempfile.mkstemp(
+        prefix=f".{file_path.name}.",
+        suffix=".tmp",
+        dir=str(file_path.parent),
+    )
+    temp_path = Path(temp_name)
+    handle = None
+
+    try:
+        if isinstance(data, str):
+            handle = os.fdopen(
+                fd,
+                "w",
+                encoding=encoding,
+                errors=errors,
+                newline=newline,
+            )
+        else:
+            handle = os.fdopen(fd, "wb")
+
+        assert handle is not None
+        with handle:
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
+
+        _replace_with_retry(
+            str(temp_path),
+            str(file_path),
+            retries=retries,
+            retry_delay=retry_delay,
+        )
+    except BaseException:
+        # os.fdopen 自体が失敗した場合は fd がまだ開いているため閉じる。
+        if handle is None:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+        # os.replace が失敗した場合などに一時ファイルを残さない。
+        try:
+            temp_path.unlink()
+        except OSError:
+            pass
+        raise
+
+    logger.debug(f"'{file_path}' を atomic write で保存しました。")
+    return file_path
+
 
 def backup_file(file_path: Union[str, Path], use_datestamp: bool = True) -> None:
     """指定されたファイルのバックアップを作成します。

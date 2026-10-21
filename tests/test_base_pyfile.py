@@ -5,6 +5,8 @@
 Ollama など外部サービスも使わない。
 """
 
+import json
+import os
 import re
 import subprocess
 import sys
@@ -14,11 +16,13 @@ from types import SimpleNamespace
 import pytest
 
 import base_pyfile
-from base_pyfile import function_timer
+import base_pyfile.file_manager as file_manager
+from base_pyfile import atomic_write, doctor, function_timer, run_command
 from base_pyfile.file_manager import read_text_file, write_file
 from base_pyfile.ini_filemanager import read_config, save_config
 from base_pyfile.log_setting import get_log_handler, make_logger
 from base_pyfile.path_manager import make_directory, reset_existing_files, unique_path
+from base_pyfile.process_manager import CommandResult
 
 
 # ------------------------------------------------------------
@@ -34,6 +38,14 @@ def test_ini_functions_are_available_from_top_level():
     """ini_filemanager の主要関数を base_pyfile 直下から使えること。"""
     assert base_pyfile.read_config is read_config
     assert base_pyfile.save_config is save_config
+
+
+def test_new_features_are_available_from_top_level():
+    """doctor / run_command / atomic_write を base_pyfile 直下から使えること。"""
+    assert base_pyfile.atomic_write is atomic_write
+    assert base_pyfile.run_command is run_command
+    assert base_pyfile.CommandResult is CommandResult
+    assert base_pyfile.doctor is doctor
 
 
 def test_version_is_semver():
@@ -223,6 +235,217 @@ def test_read_text_file_removes_utf8_bom(tmp_path):
     file_path = tmp_path / "bom.txt"
     file_path.write_bytes(b"\xef\xbb\xbfhello")
     assert read_text_file(file_path) == "hello"
+
+
+# ------------------------------------------------------------
+# doctor
+# ------------------------------------------------------------
+def test_doctor_returns_json_serializable_report():
+    report = doctor()
+
+    assert report["base_pyfile"] == base_pyfile.__version__
+    assert report["python"]["version"]
+    assert report["platform"]["windows"] is (os.name == "nt")
+    assert report["features"]["core"] == {"available": True, "missing": []}
+    assert "cv2" in report["dependencies"]
+    assert isinstance(report["warnings"], list)
+    json.dumps(report, ensure_ascii=False)
+
+
+def test_doctor_does_not_import_optional_dependencies():
+    """doctor は find_spec だけを使い、重い依存を import しないこと。"""
+    code = (
+        "from base_pyfile import doctor; "
+        "doctor(); "
+        "import sys; "
+        "print(','.join(m for m in "
+        "('cv2', 'fitz', 'pyautogui', 'numpy', 'bs4', 'requests', 'pyperclip') "
+        "if m in sys.modules))"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        cwd=Path(__file__).resolve().parents[1],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert result.stdout.strip() == ""
+
+
+# ------------------------------------------------------------
+# process_manager
+# ------------------------------------------------------------
+def test_run_command_captures_utf8():
+    result = run_command(
+        [
+            sys.executable,
+            "-c",
+            "import sys; sys.stdout.buffer.write('こんにちは'.encode('utf-8'))",
+        ]
+    )
+
+    assert isinstance(result, CommandResult)
+    assert result.ok
+    assert result.returncode == 0
+    assert result.stdout == "こんにちは"
+    assert result.stderr == ""
+    assert result.duration >= 0
+
+
+def test_run_command_captures_cp932():
+    result = run_command(
+        [
+            sys.executable,
+            "-c",
+            "import sys; sys.stdout.buffer.write('こんにちは'.encode('cp932'))",
+        ]
+    )
+
+    assert result.ok
+    assert result.stdout == "こんにちは"
+
+
+def test_run_command_captures_utf16_bom():
+    result = run_command(
+        [
+            sys.executable,
+            "-c",
+            "import sys; sys.stdout.buffer.write('こんにちは'.encode('utf-16'))",
+        ]
+    )
+
+    assert result.ok
+    assert result.stdout == "こんにちは"
+
+
+def test_run_command_nonzero_and_check():
+    command = [sys.executable, "-c", "import sys; sys.exit(3)"]
+
+    result = run_command(command)
+    assert result.returncode == 3
+    assert not result.ok
+
+    with pytest.raises(subprocess.CalledProcessError) as exc_info:
+        run_command(command, check=True)
+    assert exc_info.value.returncode == 3
+
+
+def test_run_command_timeout():
+    command = [sys.executable, "-c", "import time; time.sleep(2)"]
+
+    result = run_command(command, timeout=0.2)
+    assert result.timed_out
+    assert result.returncode == -1
+    assert not result.ok
+
+    with pytest.raises(subprocess.TimeoutExpired):
+        run_command(command, timeout=0.2, check=True)
+
+
+def test_run_command_input_and_cwd(tmp_path):
+    result = run_command(
+        [
+            sys.executable,
+            "-c",
+            "import os, sys; print(os.getcwd()); print(sys.stdin.read().strip())",
+        ],
+        cwd=tmp_path,
+        input="hello",
+    )
+
+    lines = result.stdout.splitlines()
+    assert Path(lines[0]).resolve() == tmp_path.resolve()
+    assert lines[1] == "hello"
+
+
+def test_run_command_missing_executable():
+    with pytest.raises(FileNotFoundError):
+        run_command(["base_pyfile-command-that-does-not-exist-xyz"])
+
+
+# ------------------------------------------------------------
+# atomic_write
+# ------------------------------------------------------------
+def test_atomic_write_text_creates_parent(tmp_path):
+    target = tmp_path / "nested" / "memo.txt"
+    returned = atomic_write(target, "こんにちは")
+
+    assert returned == target
+    assert target.read_text(encoding="utf-8") == "こんにちは"
+
+
+def test_atomic_write_bytes_overwrites(tmp_path):
+    target = tmp_path / "data.bin"
+    target.write_bytes(b"old")
+
+    atomic_write(target, b"\x00\x01\x02")
+
+    assert target.read_bytes() == b"\x00\x01\x02"
+
+
+def test_atomic_write_encoding(tmp_path):
+    target = tmp_path / "sjis.txt"
+    atomic_write(target, "テスト", encoding="shift_jis")
+
+    assert target.read_bytes() == "テスト".encode("shift_jis")
+
+
+def test_atomic_write_retries_permission_error(tmp_path, monkeypatch):
+    target = tmp_path / "retry.txt"
+    target.write_text("old", encoding="utf-8")
+    real_replace = file_manager.os.replace
+    calls = []
+
+    def flaky_replace(source, destination):
+        calls.append((source, destination))
+        if len(calls) == 1:
+            raise PermissionError("file is busy")
+        return real_replace(source, destination)
+
+    monkeypatch.setattr(file_manager.os, "replace", flaky_replace)
+
+    atomic_write(target, "new", retries=1, retry_delay=0)
+
+    assert target.read_text(encoding="utf-8") == "new"
+    assert len(calls) == 2
+
+
+def test_atomic_write_failure_keeps_original_and_cleans_temp(tmp_path, monkeypatch):
+    target = tmp_path / "locked.txt"
+    target.write_text("old", encoding="utf-8")
+
+    def always_locked(source, destination):
+        raise PermissionError("file is busy")
+
+    monkeypatch.setattr(file_manager.os, "replace", always_locked)
+
+    with pytest.raises(PermissionError):
+        atomic_write(target, "new", retries=1, retry_delay=0)
+
+    assert target.read_text(encoding="utf-8") == "old"
+    assert list(tmp_path.glob(".locked.txt.*.tmp")) == []
+
+
+def test_atomic_write_rejects_invalid_data(tmp_path):
+    with pytest.raises(TypeError):
+        atomic_write(tmp_path / "x.txt", 123)  # type: ignore[arg-type]
+
+
+def test_atomic_write_rejects_negative_retries(tmp_path):
+    with pytest.raises(ValueError):
+        atomic_write(tmp_path / "x.txt", "x", retries=-1)
+
+
+def test_atomic_write_backup(tmp_path):
+    target = tmp_path / "memo.txt"
+    target.write_text("old", encoding="utf-8")
+
+    atomic_write(target, "new", backup=True)
+
+    backups = list((tmp_path / "backup").glob("memo_*.txt"))
+    assert len(backups) == 1
+    assert backups[0].read_text(encoding="utf-8") == "old"
+    assert target.read_text(encoding="utf-8") == "new"
 
 
 # ------------------------------------------------------------

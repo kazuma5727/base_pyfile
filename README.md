@@ -47,6 +47,9 @@ AI 関連（`ai_router` / `ai_clipboard` / `ai_corrector` / `ai_translator`）�
 | 実行時間の計測 | `timer` / `logger_timer` | `function_timer` | なし |
 | パス操作・連番 | `unique_path` / `make_directory` / `get_all_files` など | `path_manager` | `natsort`（無くても動作、並び順が劣化） |
 | テキスト読み書き | `read_text_file` / `write_file` | `file_manager` | なし |
+| 安全なファイル書き込み | `atomic_write` | `file_manager` | なし |
+| 環境・依存の診断 | `doctor` | `diagnostics` | なし |
+| 外部コマンド実行 | `run_command` / `CommandResult` | `process_manager` | なし |
 | ini設定の読み書き | `read_config` / `save_config` | `ini_filemanager` | なし |
 | LLMの振り分け・生成（開発中） | `route_to_model` / `dispatch` / `generate` | `dev/ai_router` | `requests` + Ollamaサーバー |
 | クリップボードAI（開発中） | `watch_clipboard` / `process_clipboard_once` | `dev/ai_clipboard` | `pyperclip`（自動貼付は `pyautogui`） |
@@ -68,6 +71,23 @@ logger.info("開始")
 path = unique_path("out/result_{}.png") # 既存ファイルと衝突しない連番付きパスを返す
 write_file("out/memo.txt", "hello")     # 親ディレクトリを自動作成
 print(read_text_file("out/memo.txt"))  # UTF-8/SJIS等を自動判別
+```
+
+```python
+from base_pyfile import atomic_write, doctor, run_command
+
+# 実行環境・任意依存・利用可能な機能をまとめて確認
+report = doctor()
+print(report["features"])
+
+# 外部コマンドの出力を UTF-8 / CP932 自動判別で取得
+result = run_command(["git", "status"], timeout=30)
+print(result.returncode, result.stdout)
+if result.timed_out:
+    print("timeout")
+
+# 一時ファイル + os.replace で安全に書き換え（Windows のファイルロックはリトライ）
+atomic_write("out/memo.txt", "hello")
 ```
 
 ```python
@@ -200,6 +220,9 @@ python QRreader.py
 - 開発中 `ai_router.generate()` のタイムアウト既定は `GENERATE_TIMEOUT`（120秒）です。一覧取得など軽い問い合わせは `LIST_MODELS_TIMEOUT`（5秒）を使います。生成はモデルのロードを含むと時間がかかるため、短いタイムアウトで `answer=None` になりがちでした（修正済み）。
 - `automation_tools.move_and_click()` / `search_color()` は **引数を省略すると「呼び出した瞬間」のマウス位置**を使います（既定値を `None` にして関数内で取得する方式に修正済み）。
 - `specified_color()` / `specified_color_fast_ver()` / `templates_matching()` の `found=True` は **bool 専用**で、座標は返しません。座標が欲しい場合は `found=False`（既定）を使ってください。`found=True` を座標取得に使うことは想定していません。
+- `run_command()` は標準出力をバイト列で受け取り、UTF-8 / OS の推奨エンコーディング / CP932 の順で自動判別します。`check=True` で終了コード 0 以外は `CalledProcessError`、タイムアウトは `TimeoutExpired` になります。`check=False`（既定）では `timed_out=True` の結果を返します。
+- `atomic_write()` は同じディレクトリの一時ファイルに書いて `fsync` してから `os.replace` します。Windows の一時的な `PermissionError` は `retries` 回までリトライします。拡張子の補完はしないので、必要な拡張子はパスに含めてください。
+- `doctor()` は `cv2` / `fitz` などを import せず、`find_spec` で存在だけを確認します。`python -m base_pyfile.diagnostics` で JSON を出力できます。
 - `web_open` の座標・色は意味のある定数（`DEVICE_TOOLBAR_TOGGLE_XY` など）として `web_open.py` 冒頭にまとめています。解像度やブラウザUIが変わったらそこを調整します。
 - 開発中 `ai_clipboard.watch_clipboard()` は無限ループです。`stop_after=N` で回数を制限できます。
 

@@ -35,8 +35,12 @@ __all__ = [
     "specified_color",
     "specified_color_fast_ver",
     "templates_matching",
+    "atomic_write",
     "read_text_file",
     "write_file",
+    "run_command",
+    "CommandResult",
+    "doctor",
     "read_config",
     "save_config",
     "logger_timer",
@@ -72,8 +76,14 @@ _MODULE_OF: Dict[str, str] = {
     "specified_color_fast_ver": "base_pyfile.automation_tools",
     "templates_matching": "base_pyfile.automation_tools",
     # file_manager
+    "atomic_write": "base_pyfile.file_manager",
     "read_text_file": "base_pyfile.file_manager",
     "write_file": "base_pyfile.file_manager",
+    # process_manager
+    "CommandResult": "base_pyfile.process_manager",
+    "run_command": "base_pyfile.process_manager",
+    # diagnostics
+    "doctor": "base_pyfile.diagnostics",
     # ini_filemanager
     "read_config": "base_pyfile.ini_filemanager",
     "save_config": "base_pyfile.ini_filemanager",
