@@ -51,7 +51,8 @@ def _decode_output(
     """子プロセスの出力をデコードする。
 
     ``encoding`` が指定された場合はそれを使う。指定がない場合は
-    UTF-8 (BOM 付きを含む) -> OS の推奨エンコーディング -> CP932 の順に試す。
+    UTF-8 (BOM 付きを含む) -> CP932 (Windows) -> OS の推奨エンコーディング
+    の順に試す。
     """
     if data is None:
         return ""
@@ -68,12 +69,16 @@ def _decode_output(
         except UnicodeDecodeError:
             pass
 
-    candidates = (
-        "utf-8-sig",
-        "utf-8",
-        locale.getpreferredencoding(False),
-        "cp932",
-    )
+    preferred_encoding = locale.getpreferredencoding(False)
+    candidates = ["utf-8-sig", "utf-8"]
+    if os.name == "nt":
+        # 日本語Windowsのcp932を、英語Windowsのcp1252より先に試す。
+        # cp1252 は多くのバイト列をデコードできてしまい、cp932 の出力が
+        # 文字化けしたまま採用されるのを防ぐ。
+        candidates.append("cp932")
+    candidates.append(preferred_encoding)
+    if os.name != "nt":
+        candidates.append("cp932")
     seen = set()
     for candidate in candidates:
         if not candidate or candidate.lower() in seen:

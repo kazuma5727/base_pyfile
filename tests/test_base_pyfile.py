@@ -17,6 +17,7 @@ import pytest
 
 import base_pyfile
 import base_pyfile.file_manager as file_manager
+import base_pyfile.process_manager as process_manager
 from base_pyfile import atomic_write, doctor, function_timer, run_command
 from base_pyfile.file_manager import read_text_file, write_file
 from base_pyfile.ini_filemanager import read_config, save_config
@@ -293,6 +294,25 @@ def test_run_command_captures_utf8():
 
 
 def test_run_command_captures_cp932():
+    result = run_command(
+        [
+            sys.executable,
+            "-c",
+            "import sys; sys.stdout.buffer.write('こんにちは'.encode('cp932'))",
+        ]
+    )
+
+    assert result.ok
+    assert result.stdout == "こんにちは"
+
+
+def test_run_command_captures_cp932_when_preferred_encoding_is_cp1252(monkeypatch):
+    """英語Windows（cp1252）でも CP932 出力を文字化けさせないこと。"""
+    monkeypatch.setattr(
+        process_manager.locale,
+        "getpreferredencoding",
+        lambda do_setlocale=True: "cp1252",
+    )
     result = run_command(
         [
             sys.executable,
