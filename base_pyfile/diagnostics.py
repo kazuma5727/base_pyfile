@@ -30,7 +30,12 @@ _DEPENDENCIES: Dict[str, Tuple[str, ...]] = {
     "requests": ("requests",),
     "pyperclip": ("pyperclip",),
     "numpy": ("numpy",),
-    "cv2": ("opencv-python", "opencv-python-headless"),
+    "cv2": (
+        "opencv-python",
+        "opencv-python-headless",
+        "opencv-contrib-python",
+        "opencv-contrib-python-headless",
+    ),
     "pyautogui": ("pyautogui",),
     "pynput": ("pynput",),
     "bs4": ("beautifulsoup4",),
