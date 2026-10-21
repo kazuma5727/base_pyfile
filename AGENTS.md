@@ -19,10 +19,23 @@
 
 ## 公開 API と遅延 import
 
-- 安定版の公開関数を追加するときは `base_pyfile/__init__.py` の `_MODULE_OF` と `__all__` に登録する。`__version__` は `base_pyfile/_version.py` の固定値なので、公開名の増減では変わらない。
+- 安定版の公開関数を追加するときは `base_pyfile/__init__.py` の `_MODULE_OF` と `__all__` に登録する。`__version__` は `base_pyfile/_version.py` の固定値。公開名の増減だけでは変えず、バージョンの上げ方は `VERSIONING.md` の SemVer 基準に従う。
 - パッケージの import 時に重い依存を読まない。cv2 / pyautogui / fitz / bs4 などは各モジュール内か関数内で遅延 import する。
 - 設定ファイルを追加したら `pyproject.toml` の `[tool.setuptools.package-data]` にも登録する。テストが同梱を確認している。
 - `run_agent` / `run_repl` は未実装のため公開 API から外している。実装するまで戻さない。
+
+## バージョンとリリース
+
+- `__version__` は `base_pyfile/_version.py` の固定値。`__all__` の件数とは連動しない。
+- バージョンはリリース単位。ドキュメント・テスト・CI だけの変更は `_version.py` を変えず、`CHANGELOG.md` の `[Unreleased]` に追記する。
+- 公開 API を変更したら `VERSIONING.md` の基準で MAJOR / MINOR / PATCH を判定する。
+  - 破壊的変更: MAJOR
+  - 後方互換のある追加: MINOR
+  - 修正のみ: PATCH
+- リリース時は `_version.py` と `CHANGELOG.md` を同じコミットで更新する。`tests/test_versioning.py` が現在の `__version__` の changelog 記載を確認する。
+- `base_pyfile.dev` は実験的で SemVer 対象外。dev だけの変更では安定版のバージョンを上げない。
+- 迷ったら「既存の公開 API 利用コードが変更なしで動くか」で判断する。動かないなら MAJOR。
+- AI/エージェントは作業前に `VERSIONING.md` を読む。外部AIに渡すプロンプト例も同ファイルにある。
 
 ## 設定・実行
 

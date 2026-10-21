@@ -26,6 +26,12 @@ pip install ".[all]"              # 安定版の全機能
 - リポジトリ直下や `pip install -e .` の環境では、後方互換のため `from base_pyfile import dispatch` もそのまま使えます。
 - CLI は `python -m base_pyfile.dev.ai_clipboard <mode>` です（`ai_clipboard.bat` もこちらを呼びます）。
 
+## バージョン方針
+
+バージョンは **Semantic Versioning**（`MAJOR.MINOR.PATCH`）で、`base_pyfile/_version.py` の固定値です。関数数とは連動しません。公開 API の追加は MINOR、破壊的変更は MAJOR、修正のみは PATCH とします。
+
+詳細な判断基準・リリース手順・AI に渡すプロンプト例は [VERSIONING.md](VERSIONING.md)、変更履歴は [CHANGELOG.md](CHANGELOG.md) を参照してください。
+
 ---
 
 ## AI・エージェント向けクイックリファレンス
@@ -37,6 +43,7 @@ pip install ".[all]"              # 安定版の全機能
 - パッケージ内で相互参照する場合も `from base_pyfile.xxx import yyy` とフルパスで書く。
 - 開発中AI（`base_pyfile/dev/`）の内部参照は `from base_pyfile.dev.xxx import yyy`。安定版の `__init__.py` に dev の名前を直接書き足さない（dev があるときだけ自動でマージされる）。
 - 重い依存が必要な機能（画像・ブラウザ・PDF）は、呼び出し側の関数の中で import してよい（遅延importの推奨パターン）。
+- 公開 API やバージョンを変更する場合は [VERSIONING.md](VERSIONING.md) と `AGENTS.md` の「バージョンとリリース」に従う。公開 API の変更は `CHANGELOG.md` の `[Unreleased]` に追記し、`_version.py` はリリース時に更新する。
 
 ### 機能と依存の対応表
 AI 関連（`ai_router` / `ai_clipboard` / `ai_corrector` / `ai_translator`）は開発中のため `base_pyfile/dev/` にあり、通常の `pip install .` には含まれません。editable インストールかリポジトリ直下で使ってください。

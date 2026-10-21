@@ -1,4 +1,7 @@
 include README.md
+include VERSIONING.md
+include CHANGELOG.md
+include AGENTS.md
 include requirements.txt
 graft base_pyfile/dev
 graft tests
