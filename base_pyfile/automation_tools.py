@@ -289,11 +289,7 @@ def specified_color(
     min_size: int = 100,
     found: bool = False,
     save: str = "",
-) -> (
-    tuple[int, int]
-    | list[tuple[int, int]]
-    | tuple[tuple[int, int] | list[tuple[int, int]], bool]
-):
+) -> tuple[int, int] | list[tuple[int, int]] | bool:
     """指定した色に近い領域の位置を返します。
 
     Args:
@@ -309,11 +305,12 @@ def specified_color(
         exclude_radius (int, optional): マウスカーソル周辺の除外半径。
         max_size (float, optional): 検出する最大面積。デフォルトは無限大。
         min_size (int, optional): 検出する最小面積。デフォルトは 100。
-        found (bool, optional): True の場合、``(座標, 見つかったか)`` を返す。
+        found (bool, optional): True の場合、座標ではなく検出できたかどうかの bool を返す。
         save (str, optional): マスク画像の保存先フォルダ。
 
     Returns:
-        tuple[int, int] | list[tuple[int, int]]: 検出された位置。
+        tuple[int, int] | list[tuple[int, int]] | bool: 検出された位置。
+        ``found=True`` の場合は検出できたかどうかの bool。
     """
     if isinstance(RGB, (tuple, list)):
         if len(RGB) != 3:
@@ -368,9 +365,11 @@ def specified_color(
     # ラベルが存在しないとき
     if num_labels <= 1:
         logger.error("not found")
+        if found:
+            return False
         x, y = pyautogui.position()
         ret = (x, y) if label_count == 1 else [(x, y)]
-        return (ret, False) if found else ret
+        return ret
 
     xy_list = []
     areas_and_labels = [
@@ -398,13 +397,15 @@ def specified_color(
 
     if label_count == 1 and xy_list and not near_label:
         ret = xy_list[0]
-        return (ret, True) if found else ret
+        return True if found else ret
     elif label_count == 1 and not xy_list and not near_label:
+        if found:
+            return False
         x, y = pyautogui.position()
         ret = (x, y) if label_count == 1 else [(x, y)]
-        return (ret, False) if found else ret
+        return ret
     elif label_count > 1 and not near_label:
-        return (xy_list, True) if found else xy_list
+        return True if found else xy_list
 
     # near_labelが使われたとき
     if near_label:
@@ -431,11 +432,13 @@ def specified_color(
                 ret = (x + w // 2 + plus_x, y + h + plus_y)
             else:
                 ret = (x + w // 2 + plus_x, y + h // 2 + plus_y)
-            return (ret, True) if found else ret
+            return True if found else ret
         else:
             logger.error("指定座標に近いラベルが見つかりませんでした。")
+            if found:
+                return False
             ret = pyautogui.position()
-            return (ret, False) if found else ret
+            return ret
 
     # ラベルも近傍も指定されていない場合はランダムに選ぶ
     rows, cols = np.where(mask == 255)
@@ -452,7 +455,7 @@ def specified_color(
         y = rows[rand_index]
 
     ret = (x + plus_x, y + plus_y)
-    return (ret, True) if found else ret
+    return True if found else ret
 
 def specified_color_fast_ver(
     RGB: tuple[int, int, int] | list[int] | int,
@@ -469,11 +472,7 @@ def specified_color_fast_ver(
     min_size: int = 100,
     found: bool = False,
     save: str = "",
-) -> (
-    tuple[int, int]
-    | list[list[int]]
-    | tuple[tuple[int, int] | list[list[int]], bool]
-):
+) -> tuple[int, int] | list[list[int]] | bool:
     """
     指定した色を画像内で検出し、その位置を返します。
 
@@ -490,11 +489,12 @@ def specified_color_fast_ver(
         exclude_radius (int, optional): マウスカーソル周辺の除外半径。
         max_size (float, optional): 検出する最大面積。デフォルトは無限大。
         min_size (int, optional): 検出する最小面積。デフォルトは100。
-        found (bool, optional): True の場合、``(座標, 見つかったか)`` を返す。
+        found (bool, optional): True の場合、座標ではなく検出できたかどうかの bool を返す。
         save (str, optional): マスク画像の保存先フォルダ。
 
     Returns:
-        tuple[int, int] | list[list[int]]: 検出された色の位置。
+        tuple[int, int] | list[list[int]] | bool: 検出された色の位置。
+        ``found=True`` の場合は検出できたかどうかの bool。
     """
     # RGB値の処理
     if isinstance(RGB, tuple) or isinstance(RGB, list):
@@ -589,6 +589,8 @@ def specified_color_fast_ver(
 
     if not len(cols):
         logger.error("not found")
+        if found:
+            return False
         x, y = pyautogui.position()
 
         if label_count > 1:
@@ -596,10 +598,7 @@ def specified_color_fast_ver(
         else:
             ret = x, y
 
-        if found:
-            return ret, False
-        else:
-            return ret
+        return ret
 
     if label_count and not near_label:
         logger.debug(f"label:{label_count} label数: {num_labels}")
@@ -633,14 +632,16 @@ def specified_color_fast_ver(
                 xy_list.append([x + w // 2 + plus_x, y + h // 2 + plus_y])
         if label_count == 1 and xy_list:
             ret = tuple(xy_list[0])
-            return (ret, True) if found else ret
+            return True if found else ret
 
         elif label_count == 1 and not xy_list:
+            if found:
+                return False
             ret = pyautogui.position()
-            return (ret, False) if found else ret
+            return ret
 
         else:
-            return (xy_list, True) if found else xy_list
+            return True if found else xy_list
 
     if near_label:
         # centroids は切り取り後の画像座標なので、指定座標も同じ系へ変換する。
@@ -674,11 +675,13 @@ def specified_color_fast_ver(
                 ret = (center_x + plus_x, y + height + plus_y)
             else:
                 ret = (center_x + plus_x, center_y + plus_y)
-            return (ret, True) if found else ret
+            return True if found else ret
 
         logger.error("指定した座標に有効なラベルが見つかりませんでした。")
+        if found:
+            return False
         ret = pyautogui.position()
-        return (ret, False) if found else ret
+        return ret
 
     if bottom:
         bottom_row = np.max(rows)
@@ -693,7 +696,7 @@ def specified_color_fast_ver(
         x = cols[rand_index]
         y = rows[rand_index]
     ret = (x + plus_x, y + plus_y)
-    return (ret, True) if found else ret
+    return True if found else ret
 
 
 def templates_matching(
@@ -702,7 +705,7 @@ def templates_matching(
     left_right_upper_Lower: tuple = (),
     threshold: float = 0.4,
     found: bool = False,
-) -> tuple[int, int] | tuple[tuple[int, int], bool]:
+) -> tuple[int, int] | bool:
     """
     テンプレートマッチングを用いて画像内のテンプレートの位置を検出します。
 
@@ -711,10 +714,11 @@ def templates_matching(
         image (np.ndarray, optional): 検出対象の画像。省略時はスクリーンショットを使用。
         left_right_upper_Lower (tuple, optional): 画像の切り取り範囲 (start_col, end_col, start_row, end_row)。デフォルトは空のタプル。
         threshold (float, optional): マッチングの閾値。デフォルトは 0.4。
-        found (bool, optional): True の場合、``(座標, 見つかったか)`` を返す。
+        found (bool, optional): True の場合、座標ではなく検出できたかどうかの bool を返す。
 
     Returns:
-        tuple[int, int] | tuple[tuple[int, int], bool]: 検出されたテンプレートの中心位置。
+        tuple[int, int] | bool: 検出されたテンプレートの中心位置。
+        ``found=True`` の場合は検出できたかどうかの bool。
     """
     if image is None:
         image = cv2.cvtColor(np.array(pyautogui.screenshot()), cv2.COLOR_RGB2BGR)
@@ -755,11 +759,13 @@ def templates_matching(
         x = int(max_loc[0] + obj.shape[1] // 2) + plus_x
         y = int(max_loc[1] + obj.shape[0] // 2) + plus_y
         ret = (x, y)
-        return (ret, True) if found else ret
+        return True if found else ret
 
     logger.error("not found")
+    if found:
+        return False
     ret = pyautogui.position()
-    return (ret, False) if found else ret
+    return ret
 
 
 def full_templatematching(
