@@ -5,6 +5,20 @@
 
 ## [Unreleased]
 
+### Added
+
+- 開発中AIのOllamaモデル構成を、CPU向け（`ai_models.json`、既定）とRTX 5060 Ti向け（`ai_models_5060ti.json`）の2プロファイルに分割。`BASE_PYFILE_AI_MODELS=cpu|5060ti` または `ai_clipboard --profile cpu|5060ti` で切り替えられる。
+- 両プロファイルともクラウドモデルを使わず、ローカルOllamaのみで動作するようにした。CPU版は既存の軽量モデルで動作し、GPU版は8GBでは7B前後、16GBでは14B前後を優先する。
+
+### Changed
+
+- `ai_clipboard` に `--profile` オプションを追加。`base-pyfile ai ...` と `.bat` ランチャーからも指定できる。
+- `README.md` / `AGENTS.md` にモデル構成の切り替え方とOllamaモデルの導入例を追記。
+
+### Fixed
+
+- `is_model_installed()` が `qwen2.5:1.5b` を `qwen2.5:0.5b` のインストール済み判定に巻き込んでいた問題を修正。タグを明示したモデルは完全一致で判定し、タグ省略時だけファミリー一致を許可する。
+
 ## [4.11.0] - 2026-10-22
 
 ### Added

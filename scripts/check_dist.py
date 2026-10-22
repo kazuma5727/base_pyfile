@@ -30,6 +30,7 @@ REQUIRED_SDIST = [
     "base_pyfile/cli.py",
     "base_pyfile/__main__.py",
     "base_pyfile/dev/ai_models.json",
+    "base_pyfile/dev/ai_models_5060ti.json",
 ]
 REQUIRED_WHEEL = [
     "base_pyfile/_version.py",

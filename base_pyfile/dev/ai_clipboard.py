@@ -38,7 +38,7 @@ import pyperclip
 
 # --- 独自モジュールのインポート ---
 from base_pyfile.dev.ai_corrector import correct_text
-from base_pyfile.dev.ai_router import dispatch
+from base_pyfile.dev.ai_router import MODEL_PROFILE_ENV, dispatch
 from base_pyfile.dev.ai_translator import translate_text
 from base_pyfile.file_manager import atomic_write
 from base_pyfile.log_setting import get_log_handler, make_logger
@@ -593,6 +593,12 @@ def _build_parser() -> argparse.ArgumentParser:
         help="translate の翻訳先（例: en）。省略時は設定ファイルの既定値。",
     )
     parser.add_argument(
+        "--profile",
+        choices=("cpu", "5060ti"),
+        default=None,
+        help="使用するモデル構成（cpu=既定 / 5060ti=RTX 5060 Ti向け）",
+    )
+    parser.add_argument(
         "--hotkey",
         nargs="?",
         const=DEFAULT_HOTKEY,
@@ -683,6 +689,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         parser.error("--stop-after は 1 以上を指定してください。")
     if args.language is not None and args.mode != "translate":
         parser.error("language は mode=translate のときだけ指定できます。")
+
+    if args.profile:
+        os.environ[MODEL_PROFILE_ENV] = args.profile
 
     history_path = args.history_path
 

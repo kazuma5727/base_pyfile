@@ -1,0 +1,160 @@
+{
+    "profile": {
+        "id": "5060ti",
+        "description": "NVIDIA RTX 5060 Ti（8GB / 16GB）向け。16GBでは14B、8GBでは7Bを中心に使う。",
+        "hardware": "NVIDIA RTX 5060 Ti 8GB or 16GB + CPU/RAM",
+        "policy": "local-only; no cloud fallback",
+        "required_models_8gb": [
+            "qwen2.5:1.5b",
+            "qwen2.5:7b",
+            "qwen2.5-coder:7b",
+            "deepseek-r1:8b"
+        ],
+        "optional_models_16gb": [
+            "qwen2.5:14b",
+            "qwen2.5-coder:14b",
+            "deepseek-r1:14b",
+            "llama3.2-vision:11b"
+        ],
+        "optional_models_8gb": [
+            "llava:7b"
+        ],
+        "cloud": false
+    },
+    "router": {
+        "preferred": "tev1:0.8b",
+        "fallback": ["qwen2.5:1.5b", "qwen2.5:0.5b", "qwen2.5:7b"],
+        "safe_target": "qwen2.5:7b",
+        "default_target": "qwen2.5:7b"
+    },
+    "correction": {
+        "min_chars": 1,
+        "tiers": [
+            { "max_chars": 100, "model": "qwen2.5:1.5b" },
+            { "max_chars": 600, "model": "qwen2.5:7b" },
+            { "max_chars": 3000, "model": "qwen2.5:14b" },
+            { "max_chars": null, "model": "qwen2.5:14b" }
+        ],
+        "fallback": ["qwen2.5:7b", "qwen2.5:1.5b", "qwen2.5-coder:7b", "deepseek-r1:8b"]
+    },
+    "translation": {
+        "min_chars": 1,
+        "target_language": "ja",
+        "tiers": [
+            { "max_chars": 200, "model": "qwen2.5:1.5b" },
+            { "max_chars": 1000, "model": "qwen2.5:7b" },
+            { "max_chars": 4000, "model": "qwen2.5:14b" },
+            { "max_chars": null, "model": "qwen2.5:14b" }
+        ],
+        "fallback": ["qwen2.5:7b", "qwen2.5:1.5b", "qwen2.5-coder:7b", "deepseek-r1:8b"]
+    },
+    "agent": {
+        "model": "qwen2.5:14b",
+        "fallback": ["qwen2.5:7b", "qwen2.5-coder:7b", "deepseek-r1:8b"],
+        "max_steps": 8,
+        "execute": "subprocess",
+        "work_dir": "workspace",
+        "timeout": 120
+    },
+    "models": [
+        {
+            "name": "tev1:0.8b",
+            "role": "router",
+            "description": "超軽量の振り分け専用モデル。GPUの有無に関係なく高速。",
+            "strengths": ["高速", "低メモリ", "日本語の短い指示"],
+            "weaknesses": ["長文生成", "複雑な推論"],
+            "best_for": ["LLMの振り分け", "短い質問の判断", "簡単な回答"],
+            "avoid_for": ["長文生成", "コード生成", "数学・論理推論"]
+        },
+        {
+            "name": "qwen2.5:0.5b",
+            "role": "light",
+            "description": "最短の処理向け。GPUでもCPUでも動く予備モデル。",
+            "strengths": ["高速", "低メモリ", "短い文章"],
+            "weaknesses": ["長文", "高度な推論", "専門知識"],
+            "best_for": ["簡単な質問応答", "短い文章の整形", "ルーターの代替"],
+            "avoid_for": ["難しい推論", "コード生成", "長文"]
+        },
+        {
+            "name": "qwen2.5:1.5b",
+            "role": "light_general",
+            "description": "短い校正・翻訳向け。8GB構成でも余裕を持って動く。",
+            "strengths": ["日本語", "校正", "翻訳", "高速"],
+            "weaknesses": ["長文", "高度な推論"],
+            "best_for": ["短い校正", "短い翻訳", "日本語の文章", "高速処理"],
+            "avoid_for": ["長文", "コード生成", "高度な推論"]
+        },
+        {
+            "name": "qwen2.5:7b",
+            "role": "mid_balanced",
+            "description": "8GB構成の主力。校正・翻訳・要約のバランスが良い。",
+            "strengths": ["日本語", "校正", "翻訳", "要約", "8GB向け"],
+            "weaknesses": ["非常に長い文章", "高度な専門推論"],
+            "best_for": ["校正", "翻訳", "要約", "日本語の文章", "8GB構成"],
+            "avoid_for": ["非常に長い文章", "高度な専門推論", "大規模コード"]
+        },
+        {
+            "name": "qwen2.5:14b",
+            "role": "heavy_general",
+            "description": "16GB構成の主力。長文の校正・翻訳をより自然に処理する。",
+            "strengths": ["日本語", "長文", "校正", "翻訳", "16GB向け"],
+            "weaknesses": ["8GB構成では非推奨", "速度"],
+            "best_for": ["長文の校正", "翻訳", "要約", "日本語の文章", "16GB構成"],
+            "avoid_for": ["8GB構成", "超長文", "リアルタイム処理"]
+        },
+        {
+            "name": "qwen2.5-coder:7b",
+            "role": "code",
+            "description": "8GB構成のコード向け主力。技術文書の整形にも使える。",
+            "strengths": ["コード", "技術文書", "8GB向け"],
+            "weaknesses": ["創作", "日本語の自然さ"],
+            "best_for": ["コード生成", "コード説明", "技術文書", "8GB構成"],
+            "avoid_for": ["創作", "日本語の自然な校正", "高度な推論"]
+        },
+        {
+            "name": "qwen2.5-coder:14b",
+            "role": "code_heavy",
+            "description": "16GB構成のコード向け。より大きなコードベースや複雑な修正向け。",
+            "strengths": ["コード", "大規模な修正", "16GB向け"],
+            "weaknesses": ["8GB構成では非推奨", "速度"],
+            "best_for": ["大規模コード", "複雑な修正", "コードレビュー", "16GB構成"],
+            "avoid_for": ["8GB構成", "創作", "高速応答"]
+        },
+        {
+            "name": "deepseek-r1:8b",
+            "role": "reasoning",
+            "description": "8GB構成の推論モデル。段階的な分析や安全側の判断向け。",
+            "strengths": ["推論", "分析", "8GB向け"],
+            "weaknesses": ["速度", "思考過程の出力", "長文生成"],
+            "best_for": ["段階的な推論", "分析", "数学・論理", "8GB構成"],
+            "avoid_for": ["高速応答", "長文生成", "コーディング"]
+        },
+        {
+            "name": "deepseek-r1:14b",
+            "role": "reasoning_heavy",
+            "description": "16GB構成の推論モデル。より複雑な分析向け。",
+            "strengths": ["推論", "複雑な分析", "16GB向け"],
+            "weaknesses": ["8GB構成では非推奨", "速度", "思考過程の出力"],
+            "best_for": ["複雑な推論", "分析", "数学・論理", "16GB構成"],
+            "avoid_for": ["8GB構成", "高速応答", "長文生成"]
+        },
+        {
+            "name": "llava:7b",
+            "role": "vision_light",
+            "description": "8GB構成向けの画像理解モデル。簡単な画像説明やOCR補助に使う。",
+            "strengths": ["画像理解", "軽量", "8GB向け"],
+            "weaknesses": ["精度", "日本語", "長文推論"],
+            "best_for": ["画像理解", "画像の説明", "OCR補助", "8GB構成"],
+            "avoid_for": ["高精度な画像認識", "日本語の長文", "コード生成"]
+        },
+        {
+            "name": "llama3.2-vision:11b",
+            "role": "vision_standard",
+            "description": "16GB構成向けの画像理解モデル。llavaより高精度。",
+            "strengths": ["画像理解", "精度", "16GB向け"],
+            "weaknesses": ["8GB構成では非推奨", "速度"],
+            "best_for": ["画像理解", "画像の説明", "高精度な視覚タスク", "16GB構成"],
+            "avoid_for": ["8GB構成", "高速応答", "コード生成"]
+        }
+    ]
+}

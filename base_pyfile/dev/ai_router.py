@@ -1,9 +1,11 @@
 """渡された情報を、モデル特性JSONに基づいて最適なLLMへ振り分けるルーター。
 
-モデル構成・振り分け設定はすべて `ai_models.json` 側で持ちます。Python側を
-編集しなくても、JSONにモデルを追加・変更するだけで振り分け先を変えられます。
+モデル構成・振り分け設定はすべてJSON側で持ちます。既定はCPU向けの
+`ai_models.json` で、`BASE_PYFILE_AI_MODELS=5060ti` を指定すると
+`ai_models_5060ti.json` に切り替わります。Python側を編集しなくても、
+JSONにモデルを追加・変更するだけで振り分け先を変えられます。
 
-`ai_models.json` の "models" に書かれたモデルのうち、実際にインストール済みの
+各JSONの "models" に書かれたモデルのうち、実際にインストール済みの
 ものが振り分け先の候補になります。ルーター自身も候補に含め、判断の結果
 そのルーターで足りる内容なら、ルーター自身に振って答えさせます。
 
@@ -18,6 +20,7 @@ Ollamaとの低レベルな通信もこのモジュールが担当します。
 
 # --- 標準ライブラリのインポート ---
 import json
+import os
 import time
 from logging import NullHandler, getLogger
 from pathlib import Path
@@ -34,7 +37,7 @@ logger = getLogger("log").getChild(__name__)
 logger.addHandler(NullHandler())
 
 # --- グローバル変数 ---
-# Ollamaサーバーの接続先。モデル構成・振り分け設定は ai_models.json 側で管理する。
+# Ollamaサーバーの接続先。モデル構成・振り分け設定はプロファイルJSON側で管理する。
 OLLAMA_BASE_URL = "http://localhost:11434"
 
 # 一覧取得など、軽い問い合わせ用の短いタイムアウト(秒)
@@ -45,10 +48,47 @@ GENERATE_TIMEOUT = 120
 # 「わからない」を表す固定ラベル。ラベル方式で常に同じ位置に固定する。
 UNDECIDED_LABEL = "A"
 
+# モデル構成JSONの切り替え用。既定はCPU向け ai_models.json。
+MODEL_PROFILE_ENV = "BASE_PYFILE_AI_MODELS"
+MODEL_PROFILE_ALIASES = {
+    "default": "ai_models.json",
+    "cpu": "ai_models.json",
+    "gpu": "ai_models_5060ti.json",
+    "5060ti": "ai_models_5060ti.json",
+    "rtx5060ti": "ai_models_5060ti.json",
+}
+
 
 def _model_profile_path() -> Path:
-    """モデル特性JSON（ai_models.json）のパスを返します。"""
-    return Path(__file__).with_name("ai_models.json")
+    """使用するモデル構成JSONのパスを返します。
+
+    `BASE_PYFILE_AI_MODELS` が未設定ならCPU向けの既定ファイルを使います。
+    `cpu` / `5060ti`（または `gpu`）の別名、もしくはJSONファイルへの
+    パスを指定できます。存在しないファイルを指定した場合は既定に戻ります。
+    """
+    default_path = Path(__file__).with_name("ai_models.json")
+    requested = os.environ.get(MODEL_PROFILE_ENV, "").strip()
+    if not requested:
+        return default_path
+
+    alias = MODEL_PROFILE_ALIASES.get(requested.lower())
+    if alias:
+        path = Path(__file__).with_name(alias)
+    else:
+        path = Path(requested).expanduser()
+        if not path.is_absolute():
+            path = Path.cwd() / path
+
+    if path.is_file():
+        return path
+
+    logger.warning(
+        "%s=%s のモデル構成が見つからないため、既定の %s を使用します。",
+        MODEL_PROFILE_ENV,
+        requested,
+        default_path,
+    )
+    return default_path
 
 
 # ============================================================
@@ -101,8 +141,13 @@ def is_model_installed(
     if model_name in models:
         return True
 
-    # タグを省略した名前でも一致とみなす（例: "qwen2.5" -> "qwen2.5:0.5b"）
-    base_name = model_name.split(":")[0]
+    # タグを省略した名前だけ、同じファミリーの別タグとみなす
+    # （例: "qwen2.5" -> "qwen2.5:0.5b"）。
+    # "qwen2.5:1.5b" と "qwen2.5:0.5b" は別モデルなので一致させない。
+    if ":" in model_name:
+        return False
+
+    base_name = model_name
     return any(model.split(":")[0] == base_name for model in models)
 
 
@@ -191,7 +236,8 @@ def load_model_profiles(profile_path: Optional[Path] = None) -> Dict[str, Any]:
 
     Args:
         profile_path (Optional[Path], optional): 読み込むJSONのパス。
-            省略した場合は ai_models.json。
+            省略した場合は `BASE_PYFILE_AI_MODELS` に従う（未設定時は
+            CPU向けの ai_models.json）。
 
     Returns:
         Dict[str, Any]: "router" 設定と "models" 一覧を含む辞書。

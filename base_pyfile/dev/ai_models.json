@@ -1,156 +1,100 @@
 {
+    "profile": {
+        "id": "cpu",
+        "description": "CPUのみ（Intel Core i7-8665U / 16GB RAM）向け。Ollamaの軽量モデルだけで動作する。",
+        "hardware": "Intel Core i7-8665U (4C/8T), 16GB RAM, integrated GPU",
+        "policy": "local-only; no cloud fallback",
+        "required_models": [
+            "tev1:0.8b",
+            "qwen2.5:0.5b",
+            "qwen2.5-coder:3b",
+            "deepseek-r1:1.5b"
+        ],
+        "optional_models": [
+            "qwen2.5:1.5b"
+        ],
+        "cloud": false
+    },
     "router": {
         "preferred": "tev1:0.8b",
-        "fallback": ["qwen2.5:0.5b", "qwen3.5:9b"],
+        "fallback": ["qwen2.5:0.5b", "qwen2.5:1.5b", "qwen2.5-coder:3b"],
         "safe_target": "deepseek-r1:1.5b",
         "default_target": "qwen2.5:0.5b"
     },
     "correction": {
         "min_chars": 1,
         "tiers": [
-            { "max_chars": 100, "model": "qwen2.5:0.5b" },
-            { "max_chars": 600, "model": "qwen3.5:9b" },
-            { "max_chars": 3000, "model": "gpt-oss:20b" },
-            { "max_chars": null, "model": "glm-5.3-flash:cloud" }
+            { "max_chars": 80, "model": "qwen2.5:0.5b" },
+            { "max_chars": 800, "model": "qwen2.5:1.5b" },
+            { "max_chars": 3000, "model": "qwen2.5-coder:3b" },
+            { "max_chars": null, "model": "qwen2.5-coder:3b" }
         ],
-        "fallback": ["qwen2.5-coder:3b", "deepseek-r1:1.5b"]
+        "fallback": ["qwen2.5-coder:3b", "deepseek-r1:1.5b", "qwen2.5:0.5b"]
     },
     "translation": {
         "min_chars": 1,
         "target_language": "ja",
         "tiers": [
             { "max_chars": 200, "model": "qwen2.5:0.5b" },
-            { "max_chars": 1000, "model": "qwen3.5:9b" },
-            { "max_chars": 4000, "model": "gpt-oss:20b" },
-            { "max_chars": null, "model": "glm-5.3-flash:cloud" }
+            { "max_chars": 1200, "model": "qwen2.5:1.5b" },
+            { "max_chars": 4000, "model": "qwen2.5-coder:3b" },
+            { "max_chars": null, "model": "qwen2.5-coder:3b" }
         ],
-        "fallback": ["qwen2.5-coder:3b", "deepseek-r1:1.5b"]
+        "fallback": ["qwen2.5-coder:3b", "deepseek-r1:1.5b", "qwen2.5:0.5b"]
     },
     "agent": {
-        "model": "qwen3.8:latest",
-        "fallback": ["gemma4:26b", "qwen2.5-coder:3b", "deepseek-r1:1.5b", "glm-5.3-flash:cloud"],
-        "max_steps": 8,
+        "model": "qwen2.5-coder:3b",
+        "fallback": ["qwen2.5:1.5b", "deepseek-r1:1.5b", "qwen2.5:0.5b"],
+        "max_steps": 4,
         "execute": "subprocess",
         "work_dir": "workspace",
-        "timeout": 60
+        "timeout": 180
     },
     "models": [
         {
             "name": "tev1:0.8b",
             "role": "router",
-            "description": "超軽量・超高速の短文判定モデル。振り分け判断のルーター本体。",
-            "strengths": ["高速応答", "1文字・短文出力", "ラベル分類", "はい/いいえ判定"],
-            "weaknesses": ["長文生成", "複雑な推論", "コーディング", "専門知識"],
-            "best_for": ["LLMの振り分け判断", "クイズの1文字解答", "単純な分類・判定"],
-            "avoid_for": ["長文の要約", "コード生成", "数学・論理推論"]
+            "description": "超軽量の振り分け専用モデル。CPUでも待ち時間が少ない。",
+            "strengths": ["高速", "低メモリ", "日本語の短い指示"],
+            "weaknesses": ["長文生成", "複雑な推論"],
+            "best_for": ["LLMの振り分け", "短い質問の判断", "簡単な回答"],
+            "avoid_for": ["長文生成", "コード生成", "数学・論理推論"]
         },
         {
             "name": "qwen2.5:0.5b",
             "role": "light",
-            "description": "最小級の汎用モデル。軽い会話や短い言い換えに向く。",
-            "strengths": ["軽量", "汎用会話", "簡易な要約・言い換え"],
-            "weaknesses": ["専門知識", "長文・多段推論", "コーディング"],
+            "description": "最短の校正・翻訳向け。CPUで最も速い一般モデル。",
+            "strengths": ["高速", "低メモリ", "短い文章"],
+            "weaknesses": ["長文", "高度な推論", "専門知識"],
             "best_for": ["簡単な質問応答", "短い文章の整形", "ルーターの代替"],
-            "avoid_for": ["難しい推論", "コード生成"]
+            "avoid_for": ["難しい推論", "コード生成", "長文"]
         },
         {
-            "name": "deepseek-r1:1.5b",
-            "role": "reasoning",
-            "description": "段階的に考える推論に強いモデル。論理・数学問題向け。",
-            "strengths": ["論理推論", "数学", "多段的な思考", "原因分析"],
-            "weaknesses": ["応答速度", "メモリ消費", "コード生成"],
-            "best_for": ["複雑な判断", "数学・論理問題", "多段の推論が必要な問い"],
-            "avoid_for": ["高速な単純判定", "コーディング"]
+            "name": "qwen2.5:1.5b",
+            "role": "light_general",
+            "description": "CPU向けの推奨追加モデル。0.5Bより自然な日本語で、3Bより軽い。",
+            "strengths": ["日本語", "校正", "翻訳", "バランス"],
+            "weaknesses": ["長文", "高度な推論"],
+            "best_for": ["短い校正", "短い翻訳", "日本語の文章", "簡単な質問"],
+            "avoid_for": ["長文", "コード生成", "高度な推論"]
         },
         {
             "name": "qwen2.5-coder:3b",
             "role": "code",
-            "description": "コード生成に特化した最大モデル。",
-            "strengths": ["コード生成", "コードの説明", "デバッグ", "リファクタリング"],
-            "weaknesses": ["応答速度", "メモリ消費", "雑談"],
-            "best_for": ["プログラムの作成", "コードレビュー", "エラー修正", "技術的な質問"],
-            "avoid_for": ["高速な単純判定"]
+            "description": "CPUで動くコード向けモデル。長めの文章や技術文書の処理にも使う。",
+            "strengths": ["コード", "技術文書", "論理的な整形"],
+            "weaknesses": ["日本語の自然さ", "創作"],
+            "best_for": ["コード生成", "コード説明", "技術文書の整形", "長めの文章処理"],
+            "avoid_for": ["創作", "日本語の自然な校正", "高度な推論"]
         },
         {
-            "name": "llava:latest",
-            "role": "vision_light",
-            "description": "軽量なマルチモーダルモデル。画像の基本認識や説明向け。",
-            "strengths": ["画像認識", "画像内のテキスト抽出", "軽量視覚タスク"],
-            "weaknesses": ["複雑な空間認識", "高度な推論"],
-            "best_for": ["簡単な画像説明", "オブジェクト検出"],
-            "avoid_for": ["複雑なグラフ解析", "高度な論理推論"]
-        },
-        {
-            "name": "llama3.2-vision:latest",
-            "role": "vision_standard",
-            "description": "高性能な視覚・言語両用モデル。グラフやレイアウトの理解に強み。",
-            "strengths": ["高度な画像理解", "グラフ・チャート解析", "視覚的推論"],
-            "weaknesses": ["ローカル実行時の高負荷"],
-            "best_for": ["ドキュメント解析", "複雑な画像の説明", "視覚情報を伴うQ&A"],
-            "avoid_for": ["超高速なテキスト応答"]
-        },
-        {
-            "name": "gpt-oss:20b",
-            "role": "heavy_general",
-            "description": "大規模なオープンソース汎用モデル。高い言語理解力を持つ。",
-            "strengths": ["豊かな文脈理解", "長文生成", "高度なテキスト処理"],
-            "weaknesses": ["メモリ消費大", "応答速度"],
-            "best_for": ["創造的なライティング", "複雑な指示の解釈", "長編の要約"],
-            "avoid_for": ["リソースの限られた環境での常駐"]
-        },
-        {
-            "name": "qwen3.5:9b",
-            "role": "mid_balanced",
-            "description": "速度と賢さのバランスが優れた中規模汎用モデル。",
-            "strengths": ["多言語対応", "優れた汎用性能", "適切な応答速度"],
-            "weaknesses": ["特化型モデル（コード/推論）には一歩劣る"],
-            "best_for": ["一般的な会話", "構造化データの生成", "中規模タスクの処理"],
-            "avoid_for": ["超軽量タスク"]
-        },
-        {
-            "name": "gemma4:12b",
-            "role": "mid_expert",
-            "description": "Google系アーキテクチャの中規模モデル。指示追従性が高い。",
-            "strengths": ["指示の正確な実行", "論理タスク", "構造化出力"],
-            "weaknesses": ["メモリ消費"],
-            "best_for": ["プロンプトに忠実な処理", "エージェントのサブ脳"],
-            "avoid_for": ["超高速・短文判定"]
-        },
-        {
-            "name": "gemma4:26b",
-            "role": "heavy_expert",
-            "description": "Google系の大型フラグシップモデル。複雑なタスクや推論を強力にこなす。",
-            "strengths": ["トップクラスの知能", "複雑な命令の実行", "高度な知識"],
-            "weaknesses": ["18GBの大容量（メモリ負荷）", "応答速度"],
-            "best_for": ["難解な問題解決", "メインエージェントのバックアップ"],
-            "avoid_for": ["リソースが逼迫している時の実行"]
-        },
-        {
-            "name": "muse-glimmer:latest",
-            "role": "heavy_creative",
-            "description": "クリエイティブ表現や長文コンテキストに特化した大容量モデル。",
-            "strengths": ["表現力", "クリエイティブライティング", "深い文脈の維持"],
-            "weaknesses": ["18GBの大容量", "厳密なロジック判定"],
-            "best_for": ["小説・シナリオ作成", "ブレインストーミング", "ニュアンスの富んだ対話"],
-            "avoid_for": ["コード生成", "数学的推論"]
-        },
-        {
-            "name": "glm-5.3-flash:cloud",
-            "role": "cloud_flash",
-            "description": "API経由で動作する超高速・低遅延のクラウドモデル。ローカルリソースを消費しない。",
-            "strengths": ["ローカルメモリ消費ゼロ", "超高速処理", "長いコンテキスト"],
-            "weaknesses": ["インターネット接続が必須", "プライバシー制限"],
-            "best_for": ["ローカルVRAMが足りない時の退避先", "長文の一括処理"],
-            "avoid_for": ["完全オフライン環境での運用"]
-        },
-        {
-            "name": "qwen3.8:latest",
-            "role": "heavy_agent",
-            "description": "エージェント運用に最適化された最新の大型高性能モデル。",
-            "strengths": ["エージェント機能", "ツール利用", "関数呼び出し", "総合知能"],
-            "weaknesses": ["17GBのメモリ消費"],
-            "best_for": ["メインAgentとしての自律稼働", "ワークフローの自動実行"],
-            "avoid_for": ["単純なキーワードの振り分け"]
+            "name": "deepseek-r1:1.5b",
+            "role": "reasoning",
+            "description": "軽量な推論モデル。安全側の判断や短い分析向け。",
+            "strengths": ["推論", "段階的な説明", "低メモリ"],
+            "weaknesses": ["速度", "長文生成", "思考過程の出力"],
+            "best_for": ["段階的な推論", "数学・論理", "安全側の判断"],
+            "avoid_for": ["高速応答", "長文生成", "コーディング"]
         }
     ]
 }

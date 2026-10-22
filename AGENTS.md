@@ -5,7 +5,7 @@
 ## 構成（安定版 / 開発中）
 
 - `base_pyfile/` … 安定版。通常の `pip install .` にはこちらだけが入る。統合CLIは `base_pyfile/cli.py` と `base_pyfile/__main__.py`（`base-pyfile` / `python -m base_pyfile`）。
-- `base_pyfile/dev/` … 開発中の AI（`ai_router` / `ai_clipboard` / `ai_corrector` / `ai_translator` / `modle_edit` / `ai_models.json`）。wheel には含めない（`pyproject.toml` の `packages.find.exclude = ["base_pyfile.dev*"]`）。
+- `base_pyfile/dev/` … 開発中の AI（`ai_router` / `ai_clipboard` / `ai_corrector` / `ai_translator` / `modle_edit` / `ai_models.json` / `ai_models_5060ti.json`）。wheel には含めない（`pyproject.toml` の `packages.find.exclude = ["base_pyfile.dev*"]`）。
 - リポジトリ直下や `pip install -e .` では `base_pyfile.dev` が存在するため、`base_pyfile/__init__.py` が dev の公開名を自動マージする。`from base_pyfile import dispatch` の後方互換はこの仕組みで維持している。
 - 安定版の `__all__` / `_MODULE_OF` に dev の名前を直接書かない。dev の公開名を増やす場合は `base_pyfile/dev/__init__.py` の `__all__` と `_MODULE_OF` を更新する。
 - dev 内の相互参照は `from base_pyfile.dev.xxx import yyy`。安定版（`log_setting` など）への参照は `from base_pyfile.xxx import yyy` のまま。
@@ -47,7 +47,8 @@
 
 ## 設定・実行
 
-- `base_pyfile/dev/ai_models.json` が Ollama のルーティング・校正・翻訳・agent 設定の実体。モデル追加は JSON の `models` だけでよい。
+- `base_pyfile/dev/ai_models.json` がCPU向け（既定）、`base_pyfile/dev/ai_models_5060ti.json` がRTX 5060 Ti向けの Ollama ルーティング・校正・翻訳・agent 設定。モデル追加は各JSONの `models` だけでよい。既定はローカルのみで、クラウドフォールバックは使わない。
+- モデル構成は `BASE_PYFILE_AI_MODELS=cpu|5060ti`（`gpu` も可）または `--profile cpu|5060ti` で切り替える。`ai_router._model_profile_path()` が解決し、存在しない場合はCPU既定へ戻る。
 - `ai_router` は `http://localhost:11434` 固定。生成の timeout は 120 秒（`GENERATE_TIMEOUT`）。
 - 統合CLI は `base-pyfile <command>`（`python -m base_pyfile <command>` も同じ）。開発中AI は `base-pyfile ai [answer|correct|translate] [lang]` または `python -m base_pyfile.dev.ai_clipboard ...`。`ai_clipboard.bat` の `-honyaku` / `-gojidatuji` / `-kaitou` はこの CLI の薄いラッパーで、2つ目以降の引数（`--preview` / `--undo` / `--hotkey` など）をそのまま渡す。
 - パッケージ定義は `pyproject.toml` が正。`setup.py` は旧ツール用の shim。コア依存は natsort / requests / pyperclip のみで、重い依存は extras（`automation` / `web` / `pdf` / `all` / `dev`）で選ぶ。

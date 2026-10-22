@@ -4,6 +4,8 @@
 Ollama など外部サービスも使わない。
 """
 
+import json
+import os
 from pathlib import Path
 
 import pytest
@@ -25,6 +27,118 @@ def test_dev_public_api_is_registered_and_unique():
 def test_dev_package_data_exists():
     package_dir = Path(base_pyfile.__file__).parent
     assert (package_dir / "dev" / "ai_models.json").is_file()
+    assert (package_dir / "dev" / "ai_models_5060ti.json").is_file()
+
+
+def test_model_profiles_are_valid_and_local_only():
+    package_dir = Path(base_pyfile.__file__).parent / "dev"
+    cpu = json.loads((package_dir / "ai_models.json").read_text(encoding="utf-8"))
+    gpu = json.loads(
+        (package_dir / "ai_models_5060ti.json").read_text(encoding="utf-8")
+    )
+
+    assert cpu["profile"]["id"] == "cpu"
+    assert gpu["profile"]["id"] == "5060ti"
+
+    for profile in (cpu, gpu):
+        model_names = {model["name"] for model in profile["models"]}
+        assert profile["profile"]["cloud"] is False
+        assert not [name for name in model_names if "cloud" in name.lower()]
+        assert profile["router"]["preferred"] in model_names
+        assert profile["router"]["safe_target"] in model_names
+        assert profile["router"]["default_target"] in model_names
+        assert profile["agent"]["model"] in model_names
+        assert all(model.get("best_for") for model in profile["models"])
+
+        for section in ("correction", "translation"):
+            for tier in profile[section]["tiers"]:
+                assert tier["model"] in model_names
+            assert all(name in model_names for name in profile[section]["fallback"])
+
+
+def test_is_model_installed_requires_matching_tag():
+    installed = ["qwen2.5:0.5b", "qwen2.5-coder:3b"]
+
+    assert ai_router.is_model_installed("qwen2.5:0.5b", installed)
+    assert not ai_router.is_model_installed("qwen2.5:1.5b", installed)
+    # タグ省略時だけファミリー一致を許す（既存の挙動）。
+    assert ai_router.is_model_installed("qwen2.5", installed)
+
+
+def test_model_profiles_fall_back_to_installed_models():
+    package_dir = Path(base_pyfile.__file__).parent / "dev"
+    cpu = json.loads((package_dir / "ai_models.json").read_text(encoding="utf-8"))
+    gpu = json.loads(
+        (package_dir / "ai_models_5060ti.json").read_text(encoding="utf-8")
+    )
+
+    # CPU版は現在インストール済みの4モデルだけで動く。
+    cpu_installed = ["tev1:0.8b", "qwen2.5:0.5b", "qwen2.5-coder:3b", "deepseek-r1:1.5b"]
+    assert (
+        ai_corrector.select_model_by_length(
+            "あ" * 500, profiles=cpu, installed=cpu_installed
+        )
+        == "qwen2.5-coder:3b"
+    )
+
+    # 8GB版は14Bが無くても7Bへフォールバックする。
+    gpu_8gb = ["qwen2.5:1.5b", "qwen2.5:7b", "qwen2.5-coder:7b", "deepseek-r1:8b"]
+    assert (
+        ai_corrector.select_model_by_length(
+            "あ" * 1000, profiles=gpu, installed=gpu_8gb
+        )
+        == "qwen2.5:7b"
+    )
+
+    # 16GB版で14Bが入っていれば14Bを使う。
+    gpu_16gb = gpu_8gb + ["qwen2.5:14b"]
+    assert (
+        ai_corrector.select_model_by_length(
+            "あ" * 1000, profiles=gpu, installed=gpu_16gb
+        )
+        == "qwen2.5:14b"
+    )
+
+
+def test_model_profile_selection(monkeypatch):
+    monkeypatch.delenv(ai_router.MODEL_PROFILE_ENV, raising=False)
+    assert ai_router._model_profile_path().name == "ai_models.json"
+    assert ai_router.load_model_profiles()["profile"]["id"] == "cpu"
+
+    monkeypatch.setenv(ai_router.MODEL_PROFILE_ENV, "5060ti")
+    assert ai_router._model_profile_path().name == "ai_models_5060ti.json"
+    assert ai_router.load_model_profiles()["profile"]["id"] == "5060ti"
+
+    monkeypatch.setenv(ai_router.MODEL_PROFILE_ENV, "gpu")
+    assert ai_router._model_profile_path().name == "ai_models_5060ti.json"
+
+
+def test_model_profile_custom_path_and_missing_fallback(monkeypatch, tmp_path):
+    custom = tmp_path / "custom.json"
+    custom.write_text('{"profile": {"id": "custom"}}', encoding="utf-8")
+    monkeypatch.setenv(ai_router.MODEL_PROFILE_ENV, str(custom))
+    assert ai_router._model_profile_path() == custom
+
+    monkeypatch.setenv(
+        ai_router.MODEL_PROFILE_ENV, str(tmp_path / "missing.json")
+    )
+    assert ai_router._model_profile_path().name == "ai_models.json"
+
+
+def test_ai_clipboard_profile_option_sets_environment(monkeypatch, tmp_path):
+    monkeypatch.delenv(ai_router.MODEL_PROFILE_ENV, raising=False)
+    exit_code = ai_clipboard.main(
+        [
+            "--history",
+            "--profile",
+            "5060ti",
+            "--history-path",
+            str(tmp_path / "history.json"),
+        ]
+    )
+
+    assert exit_code == 0
+    assert os.environ[ai_router.MODEL_PROFILE_ENV] == "5060ti"
 
 
 def test_top_level_keeps_backward_compatibility():

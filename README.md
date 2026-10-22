@@ -95,6 +95,61 @@ AI 関連（`ai_router` / `ai_clipboard` / `ai_corrector` / `ai_translator`）�
 
 > `run_agent` / `run_repl` は未実装のため、現在は公開 API（`__all__`）に含めていません。`base_pyfile/agent.py` を追加した時点で再登録します。
 
+### モデル構成（CPU / RTX 5060 Ti）
+Ollama のモデル構成は、このPC向けのCPU版と RTX 5060 Ti 版の2つがあります。既定はCPU版です。どちらもローカルのOllamaだけを使い、クラウドへはフォールバックしません。
+
+| プロファイル | 設定ファイル | 対象 |
+| --- | --- | --- |
+| `cpu`（既定） | `base_pyfile/dev/ai_models.json` | Intel Core i7-8665U / 16GB RAM / GPUなし |
+| `5060ti` | `base_pyfile/dev/ai_models_5060ti.json` | NVIDIA RTX 5060 Ti 8GB / 16GB |
+
+```bash
+# CPU版（既定）
+python -m base_pyfile.dev.ai_clipboard correct
+
+# RTX 5060 Ti 版（CLIオプション）
+python -m base_pyfile.dev.ai_clipboard correct --profile 5060ti
+base-pyfile ai correct --profile 5060ti
+```
+
+```powershell
+# 環境変数でも切り替え可能（PowerShell）
+$env:BASE_PYFILE_AI_MODELS="5060ti"
+python -m base_pyfile.dev.ai_clipboard correct
+```
+
+```bat
+REM 環境変数でも切り替え可能（cmd）
+set BASE_PYFILE_AI_MODELS=5060ti
+python -m base_pyfile.dev.ai_clipboard correct
+```
+
+CPU版は、このPCにインストール済みの `tev1:0.8b` / `qwen2.5:0.5b` / `qwen2.5-coder:3b` / `deepseek-r1:1.5b` でそのまま動きます。`qwen2.5:1.5b` を追加すると短い校正・翻訳の品質が上がります（未インストールでも自動でフォールバックします）。
+
+```bash
+# CPU版の推奨追加（任意）
+ollama pull qwen2.5:1.5b
+```
+
+RTX 5060 Ti 版は、8GBでは7B前後、16GBでは14B前後を主力にします。14Bモデルが未インストールの場合は7Bへ自動で切り替わります。
+
+```bash
+# 8GB / 16GB 共通の基本
+ollama pull qwen2.5:1.5b
+ollama pull qwen2.5:7b
+ollama pull qwen2.5-coder:7b
+ollama pull deepseek-r1:8b
+
+# 16GB版のみ（8GB版ではインストールしない）
+ollama pull qwen2.5:14b
+ollama pull qwen2.5-coder:14b
+ollama pull deepseek-r1:14b
+ollama pull llama3.2-vision:11b
+
+# 8GB版の画像用途（任意）
+ollama pull llava:7b
+```
+
 ### 各機能の最小例
 ```python
 from base_pyfile import make_logger, unique_path, read_text_file, write_file
@@ -137,7 +192,7 @@ print(result["model"], result["answer"])
 ```
 
 ### 誤字脱字の校正（コピー → 貼り付けで直す）
-`ai_corrector` を使うと、クリップボードの中身を校正してそのまま書き戻せます。使うモデルは **文字数**で決まり、`base_pyfile/dev/ai_models.json` の `correction.tiers`（`max_chars` → `model`）で設定します。
+`ai_corrector` を使うと、クリップボードの中身を校正してそのまま書き戻せます。使うモデルは **文字数**で決まり、選択中のプロファイル（既定は `base_pyfile/dev/ai_models.json`）の `correction.tiers`（`max_chars` → `model`）で設定します。
 
 ```python
 from base_pyfile import correct_text, process_clipboard_once
@@ -164,17 +219,17 @@ python -m base_pyfile.dev.ai_clipboard correct
 "correction": {
   "min_chars": 1,
   "tiers": [
-    { "max_chars": 100,  "model": "qwen2.5:0.5b" },
-    { "max_chars": 600,  "model": "qwen3.5:9b" },
-    { "max_chars": 3000, "model": "gpt-oss:20b" },
-    { "max_chars": null, "model": "glm-5.3-flash:cloud" }
+    { "max_chars": 80,   "model": "qwen2.5:0.5b" },
+    { "max_chars": 800,  "model": "qwen2.5:1.5b" },
+    { "max_chars": 3000, "model": "qwen2.5-coder:3b" },
+    { "max_chars": null, "model": "qwen2.5-coder:3b" }
   ],
-  "fallback": ["qwen2.5-coder:3b", "deepseek-r1:1.5b"]
+  "fallback": ["qwen2.5-coder:3b", "deepseek-r1:1.5b", "qwen2.5:0.5b"]
 }
 ```
 
 ### 翻訳（コピー → 貼り付けで翻訳）
-`ai_translator` を使うと、クリップボードの中身を指定言語へ翻訳してそのまま書き戻せます。**既定は日本語へ翻訳**です。使うモデルは `ai_corrector` と同じく文字数で決まり、`base_pyfile/dev/ai_models.json` の `translation.tiers` で設定します。
+`ai_translator` を使うと、クリップボードの中身を指定言語へ翻訳してそのまま書き戻せます。**既定は日本語へ翻訳**です。使うモデルは `ai_corrector` と同じく文字数で決まり、選択中のプロファイルの `translation.tiers` で設定します。
 
 ```python
 from base_pyfile import translate_text, process_clipboard_once
@@ -210,11 +265,11 @@ python -m base_pyfile.dev.ai_clipboard translate en
   "target_language": "ja",
   "tiers": [
     { "max_chars": 200,  "model": "qwen2.5:0.5b" },
-    { "max_chars": 1000, "model": "qwen3.5:9b" },
-    { "max_chars": 4000, "model": "gpt-oss:20b" },
-    { "max_chars": null, "model": "glm-5.3-flash:cloud" }
+    { "max_chars": 1200, "model": "qwen2.5:1.5b" },
+    { "max_chars": 4000, "model": "qwen2.5-coder:3b" },
+    { "max_chars": null, "model": "qwen2.5-coder:3b" }
   ],
-  "fallback": ["qwen2.5-coder:3b", "deepseek-r1:1.5b"]
+  "fallback": ["qwen2.5-coder:3b", "deepseek-r1:1.5b", "qwen2.5:0.5b"]
 }
 ```
 
@@ -242,6 +297,9 @@ python -m base_pyfile.dev.ai_clipboard correct --hotkey "<ctrl>+<alt>+j" --once
 
 # 履歴を残さない（機密テキスト向け）
 python -m base_pyfile.dev.ai_clipboard correct --no-history
+
+# RTX 5060 Ti 向けモデル構成を使う
+python -m base_pyfile.dev.ai_clipboard correct --profile 5060ti
 ```
 
 - `--preview` はクリップボードを変更せず、履歴にも保存しません。適用する場合は `--once` か通常の監視モードを使ってください。
@@ -262,10 +320,11 @@ ai_clipboard.bat -honyaku en    REM 翻訳先の言語を指定（既定は ja=�
 ai_clipboard.bat -gojidatuji --preview   REM 書き戻さず差分だけ確認
 ai_clipboard.bat -honyaku en --once      REM 1回だけ処理
 ai_clipboard.bat -gojidatuji --hotkey    REM ホットキーで1回だけ処理
+ai_clipboard.bat -gojidatuji --profile 5060ti  REM RTX 5060 Ti 向け構成
 ai_clipboard.bat -help          REM 使い方を表示
 ```
 
-- `-honyaku` / `-gojidatuji` / `-kaitou` の後ろに付けた引数（`--preview` / `--once` / `--hotkey` / `--undo` / `--history` など）は、そのままPython側のCLIへ渡されます。
+- `-honyaku` / `-gojidatuji` / `-kaitou` の後ろに付けた引数（`--preview` / `--once` / `--hotkey` / `--undo` / `--history` / `--profile` など）は、そのままPython側のCLIへ渡されます。
 - 内部では `python -m base_pyfile.dev.ai_clipboard <mode>` を呼んでいるだけです（`-honyaku`→`translate`、`-gojidatuji`→`correct`、`-kaitou`→`answer`）。
 - 先頭の `-` は省略可（`honyaku` でも起動できます）。
 - Python は PATH 上の `python` を優先し、無ければ `py` ランチャーを使います。特定のPythonを使いたい場合は bat 内の `set "PY=python"` を書き換えてください。

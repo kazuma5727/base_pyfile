@@ -4,6 +4,7 @@
 """
 
 import json
+import os
 import subprocess
 import sys
 
@@ -11,6 +12,7 @@ import pytest
 
 import base_pyfile
 from base_pyfile import cli
+from base_pyfile.dev.ai_router import MODEL_PROFILE_ENV
 
 
 def test_version_subcommand(capsys):
@@ -97,6 +99,24 @@ def test_ai_subcommand_history(tmp_path, capsys):
         == 0
     )
     assert "履歴はありません" in capsys.readouterr().out
+
+
+def test_ai_subcommand_profile_passthrough(monkeypatch, tmp_path):
+    monkeypatch.delenv(MODEL_PROFILE_ENV, raising=False)
+    assert (
+        cli.main(
+            [
+                "ai",
+                "--history",
+                "--profile",
+                "5060ti",
+                "--history-path",
+                str(tmp_path / "history.jsonl"),
+            ]
+        )
+        == 0
+    )
+    assert os.environ[MODEL_PROFILE_ENV] == "5060ti"
 
 
 def test_help_exits_zero():
