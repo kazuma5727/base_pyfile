@@ -77,8 +77,12 @@ PATCH / MINOR として出した例があります（4.9.0 / 4.9.1）。
 3. `base_pyfile/_version.py` を更新する
 4. `CHANGELOG.md` の `[Unreleased]` を新しいバージョンと日付に移す（先頭に空の `[Unreleased]` を残す）
 5. `python -m pytest -q` を実行する
-6. GitHub Actions（Windows / Python 3.10・3.12）を確認する
-7. コミット・push する。必要なら `vX.Y.Z` タグを付ける
+6. `python -m build` で sdist / wheel を作り、`python -m twine check dist/*` と `python scripts/check_dist.py` で検証する（未導入なら `python -m pip install build twine`）
+7. GitHub Actions（Windows / Python 3.10・3.12、`package` ジョブ）を確認する
+8. コミット・push する。必要なら `vX.Y.Z` タグを付ける
+
+`scripts/check_dist.py` は、sdist に README / VERSIONING / CHANGELOG / AGENTS が入っていること、
+wheel に `base_pyfile.dev` が混入していないこと、成果物のバージョンが `_version.py` と一致することを確認します。
 
 `tests/test_versioning.py` は、現在の `__version__` が `CHANGELOG.md` に
 記載されていることを確認します。バージョンだけ上げて changelog を忘れると CI で落ちます。

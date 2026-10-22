@@ -234,7 +234,7 @@ python QRreader.py
 - 開発中 `ai_clipboard.watch_clipboard()` は無限ループです。`stop_after=N` で回数を制限できます。
 
 ### テスト
-軽量モジュールの回帰テストは `tests/test_base_pyfile.py`（安定版）と `tests/test_dev_ai.py`（開発中AI）にあります。
+軽量モジュールの回帰テストは `tests/test_base_pyfile.py`（安定版）と `tests/test_dev_ai.py`（開発中AI）にあります。バージョン方針と changelog の整合性は `tests/test_versioning.py` で確認します。
 ```bash
 python -m pytest tests -q
 ```

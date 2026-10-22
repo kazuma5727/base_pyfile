@@ -3,6 +3,7 @@ include VERSIONING.md
 include CHANGELOG.md
 include AGENTS.md
 include requirements.txt
+include scripts/check_dist.py
 graft base_pyfile/dev
 graft tests
 global-exclude __pycache__

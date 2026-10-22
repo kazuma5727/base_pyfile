@@ -13,9 +13,10 @@
 
 ## 検証
 
-- `python -m pytest tests -q`（安定版: `tests/test_base_pyfile.py`、開発中AI: `tests/test_dev_ai.py`）
+- `python -m pytest tests -q`（安定版: `tests/test_base_pyfile.py`、開発中AI: `tests/test_dev_ai.py`、バージョン方針: `tests/test_versioning.py`）
 - テストは軽量・オフライン前提。Ollama、cv2、PyMuPDF などを要求するテストは追加しない。`ai_router.generate` などは monkeypatch する。
 - GitHub Actions（`.github/workflows/tests.yml`）が Windows / Python 3.10・3.12 で editable インストールして pytest を実行する。lint / typecheck は無い。
+- `package` ジョブが sdist / wheel をビルドし、`twine check` と `scripts/check_dist.py` でメタデータ・同梱内容を検証する。
 
 ## 公開 API と遅延 import
 

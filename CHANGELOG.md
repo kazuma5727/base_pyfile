@@ -10,12 +10,15 @@
 - `VERSIONING.md` を追加。SemVer の判断基準、リリース手順、AI/エージェント向けの指示例を記載。
 - `CHANGELOG.md` を追加。
 - `tests/test_versioning.py` を追加。現在の `__version__` が changelog に記載されているかを CI で確認する。
+- `scripts/check_dist.py` を追加。sdist / wheel の同梱内容とバージョンの一致を検証する。
+- `tests/test_versioning.py` に changelog の見出し形式・日付・並び順・重複の検証を追加。
 
 ### Changed
 
 - `AGENTS.md` / `README.md` にバージョン方針への導線を追加。
 - `AGENTS.md` に Git 運用（コミット後の push 同期）を追記。
-- sdist に `VERSIONING.md` / `CHANGELOG.md` / `AGENTS.md` を含める。
+- GitHub Actions に `package` ジョブを追加し、ビルド成果物を検証する。
+- sdist に `VERSIONING.md` / `CHANGELOG.md` / `AGENTS.md` / `scripts/check_dist.py` を含める。
 
 ## [4.10.0] - 2026-10-21
 
