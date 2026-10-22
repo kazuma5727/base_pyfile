@@ -24,12 +24,18 @@ REQUIRED_SDIST = [
     "pyproject.toml",
     "scripts/check_dist.py",
     "tests/test_versioning.py",
+    "tests/test_cli.py",
+    "tests/test_ai_clipboard.py",
     "base_pyfile/settings.ini",
+    "base_pyfile/cli.py",
+    "base_pyfile/__main__.py",
     "base_pyfile/dev/ai_models.json",
 ]
 REQUIRED_WHEEL = [
     "base_pyfile/_version.py",
     "base_pyfile/settings.ini",
+    "base_pyfile/cli.py",
+    "base_pyfile/__main__.py",
 ]
 FORBIDDEN_WHEEL_PREFIXES = ["base_pyfile/dev/"]
 
@@ -85,6 +91,14 @@ def _check_wheel(path: Path, version: str) -> None:
             raise SystemExit("wheel に METADATA がありません")
         metadata = archive.read(metadata_name).decode("utf-8")
 
+        entry_points_name = next(
+            (name for name in names if name.endswith(".dist-info/entry_points.txt")),
+            None,
+        )
+        if entry_points_name is None:
+            raise SystemExit("wheel に entry_points.txt がありません")
+        entry_points = archive.read(entry_points_name).decode("utf-8")
+
     missing = [name for name in REQUIRED_WHEEL if name not in names]
     if missing:
         raise SystemExit(f"wheel に不足しているファイルがあります: {missing}")
@@ -96,6 +110,9 @@ def _check_wheel(path: Path, version: str) -> None:
     ]
     if leaked:
         raise SystemExit(f"wheel に base_pyfile.dev が混入しています: {leaked}")
+
+    if "base-pyfile = base_pyfile.cli:main" not in entry_points:
+        raise SystemExit("wheel の entry_points.txt に base-pyfile がありません")
 
     if f"Version: {version}" not in metadata.splitlines():
         raise SystemExit("wheel の METADATA のバージョンが _version.py と一致しません")

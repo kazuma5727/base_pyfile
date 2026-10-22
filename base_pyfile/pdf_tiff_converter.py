@@ -39,7 +39,10 @@ def _png_output_path(
 
 
 def pdf_to_png(
-    pdf_path: ImagePath, output_folder: ImagePath | None = None, png_name: str | None = None
+    pdf_path: ImagePath,
+    output_folder: ImagePath | None = None,
+    png_name: str | None = None,
+    dpi: int | None = None,
 ) -> None:
     """PDFファイルをPNG画像に変換する関数。
 
@@ -52,7 +55,14 @@ def pdf_to_png(
             PDF名フォルダに保存する。
         png_name (str, optional): 保存するPNGファイル名。省略時は
             ``PDF名_ページ番号.png`` を使用する。
+        dpi (int, optional): 出力解像度。省略時は PyMuPDF の既定値（72dpi）を使う。
+
+    Raises:
+        ValueError: ``dpi`` が 1 未満の場合。
     """
+    if dpi is not None and dpi <= 0:
+        raise ValueError("dpi は 1 以上で指定してください。")
+
     pdf_path = Path(pdf_path)
     output_folder = (
         Path(output_folder)
@@ -60,12 +70,16 @@ def pdf_to_png(
         else pdf_path.parent / pdf_path.stem
     )
     output_folder.mkdir(parents=True, exist_ok=True)
+    zoom = dpi / 72 if dpi is not None else None
 
     # with を使い、Windows でもPDFファイルを開いたままにしない。
     with fitz.open(str(pdf_path)) as pdf_document:
         for page_num in range(len(pdf_document)):
             page = pdf_document.load_page(page_num)
-            pix = page.get_pixmap()
+            if zoom is None:
+                pix = page.get_pixmap()
+            else:
+                pix = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom))
             output_path = _png_output_path(
                 output_folder, png_name, pdf_path.stem, page_num
             )
@@ -112,6 +126,7 @@ def convert_to_png(
     input_path: ImagePath,
     output_folder: ImagePath | None = None,
     png_name: str | None = None,
+    dpi: int | None = None,
 ) -> None:
     """PDFまたはTIFFファイルをPNG画像に変換する関数。
 
@@ -119,9 +134,10 @@ def convert_to_png(
         input_path (str | Path): 入力ファイル（PDFまたはTIFF）。
         output_folder (str | Path, optional): 出力フォルダ。
         png_name (str, optional): 保存するPNGファイル名。
+        dpi (int, optional): PDFの出力解像度。TIFFでは無視される。
 
     Raises:
-        ValueError: 対応していない拡張子の場合。
+        ValueError: 対応していない拡張子、または ``dpi`` が 1 未満の場合。
     """
     input_path = Path(input_path)
     output_folder = (
@@ -133,7 +149,7 @@ def convert_to_png(
 
     suffix = input_path.suffix.lower()
     if suffix == ".pdf":
-        pdf_to_png(input_path, output_folder, png_name)
+        pdf_to_png(input_path, output_folder, png_name, dpi=dpi)
     elif suffix in {".tiff", ".tif"}:
         tiff_to_png(input_path, output_folder, png_name)
     else:

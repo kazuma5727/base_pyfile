@@ -36,6 +36,7 @@
 SemVer の対象になる「公開API」は次です。
 
 - 通常の wheel に含まれる `base_pyfile` の `__all__` にある名前
+- 統合CLI `base-pyfile`（`python -m base_pyfile`）のサブコマンド・引数・出力・終了コード
 - README や docstring に書かれている関数・引数・戻り値・例外・既定値
 - README や AGENTS.md で案内している import 経路
 - `CommandResult` などの公開データクラスのフィールド
@@ -54,6 +55,7 @@ SemVer の対象になる「公開API」は次です。
 ## このリポジトリでの例
 
 - `doctor()` / `run_command()` / `atomic_write()` の追加 → **MINOR**（4.10.0）
+- 統合CLI `base-pyfile` と `pdf_to_png(dpi=...)` の追加 → **MINOR**（4.11.0）
 - 文字化けやファイルロックの不具合修正 → **PATCH**（4.10.1）
 - `found=True` の戻り値を座標から bool に変える → 厳密には **MAJOR**
 - `make_directory()` の既定動作変更や `write_file()` の例外化 → 厳密には **MAJOR**
@@ -82,7 +84,8 @@ PATCH / MINOR として出した例があります（4.9.0 / 4.9.1）。
 8. コミット・push する。必要なら `vX.Y.Z` タグを付ける
 
 `scripts/check_dist.py` は、sdist に README / VERSIONING / CHANGELOG / AGENTS が入っていること、
-wheel に `base_pyfile.dev` が混入していないこと、成果物のバージョンが `_version.py` と一致することを確認します。
+wheel に `base_pyfile.dev` が混入していないこと、`base-pyfile` の console script が登録されていること、
+成果物のバージョンが `_version.py` と一致することを確認します。
 
 `tests/test_versioning.py` は、現在の `__version__` が `CHANGELOG.md` に
 記載されていることを確認します。バージョンだけ上げて changelog を忘れると CI で落ちます。

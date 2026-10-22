@@ -43,3 +43,5 @@ jobs:
           python -m pip install --force-reinstall --no-deps (Get-ChildItem dist/*.whl).FullName
           python -I -c "import base_pyfile, importlib.metadata as metadata; assert metadata.version('base_pyfile') == base_pyfile.__version__; print('installed', base_pyfile.__version__)"
           python -I -c "import importlib.util; assert importlib.util.find_spec('base_pyfile.dev') is None; print('base_pyfile.dev is not installed')"
+          python -I -m base_pyfile version
+          base-pyfile --version

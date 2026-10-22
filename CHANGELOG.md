@@ -5,8 +5,15 @@
 
 ## [Unreleased]
 
+## [4.11.0] - 2026-10-22
+
 ### Added
 
+- 統合CLI `base-pyfile`（`python -m base_pyfile`）を追加。`doctor` / `run` / `open` / `pdf-to-png` / `tiff-to-pdf` / `image-to-pdf` / `ai` / `version` サブコマンドを提供する。
+- `pdf_to_png()` / `convert_to_png()` に `dpi` オプションを追加。CLI の `pdf-to-png --dpi` から指定できる。
+- 開発中AIのクリップボード処理に、`--preview`（差分確認）、`--undo` / `--history`（履歴・アンドゥ）、`--hotkey`（グローバルホットキー）を追加。履歴は既定で最新100件を保存する。
+- `watch_hotkey()` / `undo_last()` / `load_history()` / `format_diff()` を `base_pyfile.dev` の公開名に追加。
+- `tests/test_cli.py` / `tests/test_ai_clipboard.py` を追加。`scripts/check_dist.py` で console script と新しい同梱ファイルを検証する。
 - `VERSIONING.md` を追加。SemVer の判断基準、リリース手順、AI/エージェント向けの指示例を記載。
 - `CHANGELOG.md` を追加。
 - `tests/test_versioning.py` を追加。現在の `__version__` が changelog に記載されているかを CI で確認する。
@@ -15,7 +22,9 @@
 
 ### Changed
 
-- `AGENTS.md` / `README.md` にバージョン方針への導線を追加。
+- `base_pyfile.dev.ai_clipboard` の CLI を argparse ベースに変更。従来の `python -m base_pyfile.dev.ai_clipboard [mode] [lang]` はそのまま使える。
+- `ai_clipboard.bat` が2つ目以降の引数をPython側へ渡すよう変更。`--preview` / `--once` / `--hotkey` などを利用できる。
+- `AGENTS.md` / `README.md` にバージョン方針と統合CLI・クリップボード安全機能への導線を追加。
 - `AGENTS.md` に Git 運用（コミット後の push 同期）を追記。
 - GitHub Actions に `package` ジョブを追加し、ビルド成果物を検証する。
 - sdist に `VERSIONING.md` / `CHANGELOG.md` / `AGENTS.md` / `scripts/check_dist.py` を含める。

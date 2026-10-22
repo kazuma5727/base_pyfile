@@ -35,8 +35,8 @@ if not defined MODE (
     goto :usage
 )
 
-REM 翻訳先の言語（2つ目の引数。既定は日本語）
-set "LANG=%~2"
+REM 翻訳先の言語や追加オプション（2つ目以降の引数）をそのままPython側へ渡す。
+set "EXTRA=%2 %3 %4 %5 %6 %7 %8 %9"
 
 REM Python の実行ファイルを探す（PATH上の python → py ランチャーの順）
 set "PY=python"
@@ -54,7 +54,7 @@ echo.
 
 REM 開発中モジュール（base_pyfile/dev/）を呼ぶ。editable インストールか
 REM リポジトリ直下での実行が必要。
-"%PY%" -m base_pyfile.dev.ai_clipboard %MODE% %LANG%
+"%PY%" -m base_pyfile.dev.ai_clipboard %MODE% %EXTRA%
 
 echo.
 echo 終了しました。
@@ -69,6 +69,11 @@ echo   -honyaku      コピーした内容を日本語へ翻訳（既定）
 echo   -gojidatuji   コピーした内容の誤字脱字を校正
 echo   -kaitou       コピーした内容をAIへ振り分けて回答
 echo   -help         この使い方を表示
+echo.
+echo  2つ目以降の引数はPython側のCLIへ渡されます。
+echo  例: %~nx0 -gojidatuji --preview   （書き戻さず差分を確認）
+echo      %~nx0 -honyaku en --once     （1回だけ英語へ翻訳）
+echo      %~nx0 -gojidatuji --hotkey   （ホットキーで1回だけ校正）
 echo.
 echo  例: %~nx0 -honyaku
 echo      %~nx0 -honyaku en   （英語へ翻訳）

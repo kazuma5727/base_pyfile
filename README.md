@@ -14,6 +14,33 @@ pip install ".[all]"              # 安定版の全機能
 
 コアだけなら cv2 / PyMuPDF / pyautogui はインストールされません。必要な機能の extras を選んでください。
 
+## 統合CLI
+
+`pip install .` で `base-pyfile` コマンドが入ります。`python -m base_pyfile` でも同じ機能を呼び出せます。
+
+```bash
+base-pyfile doctor                 # 実行環境・任意依存・利用可能な機能を表示
+base-pyfile doctor --json          # 同じ内容をJSONで出力
+base-pyfile run -- git status      # 外部コマンドを実行（-- 以降をそのまま渡す）
+base-pyfile open .                 # ファイル/フォルダを既定アプリで開く
+base-pyfile version                # バージョンを表示
+
+# PDF / TIFF / 画像変換（pip install ".[pdf]" が必要）
+base-pyfile pdf-to-png input.pdf -o out --dpi 200
+base-pyfile tiff-to-pdf input.tiff
+base-pyfile image-to-pdf page1.png page2.png -o out.pdf
+
+# 開発中AI（リポジトリ直下 / editable インストールのみ）
+base-pyfile ai correct --preview
+base-pyfile ai translate en --preview
+base-pyfile ai --history
+base-pyfile ai --undo
+```
+
+- `run` の `--timeout` / `--cwd` / `--shell` はコマンドより前に指定します（例: `base-pyfile run --timeout 30 -- git status`）。
+- `pdf-to-png` の `--dpi` は省略可能です。省略時は PyMuPDF の既定解像度（72dpi）を使います。
+- `base-pyfile ai ...` は `python -m base_pyfile.dev.ai_clipboard ...` と同じオプションを受け付けます。
+
 ## 安定版と開発中機能
 
 | 区分 | 置き場所 | 通常の `pip install .` | 使い方 |
@@ -24,7 +51,7 @@ pip install ".[all]"              # 安定版の全機能
 
 - `ai_router` / `ai_clipboard` / `ai_corrector` / `ai_translator` / `modle_edit` / `ai_models.json` は開発中のため `base_pyfile/dev/` に分離しています。
 - リポジトリ直下や `pip install -e .` の環境では、後方互換のため `from base_pyfile import dispatch` もそのまま使えます。
-- CLI は `python -m base_pyfile.dev.ai_clipboard <mode>` です（`ai_clipboard.bat` もこちらを呼びます）。
+- 安定版の統合CLI は `base-pyfile <command>`（または `python -m base_pyfile <command>`）です。開発中AIは `base-pyfile ai <mode>`、または `python -m base_pyfile.dev.ai_clipboard <mode>` で呼びます（`ai_clipboard.bat` もこちらを呼びます）。
 
 ## バージョン方針
 
@@ -59,7 +86,7 @@ AI 関連（`ai_router` / `ai_clipboard` / `ai_corrector` / `ai_translator`）�
 | 外部コマンド実行 | `run_command` / `CommandResult` | `process_manager` | なし |
 | ini設定の読み書き | `read_config` / `save_config` | `ini_filemanager` | なし |
 | LLMの振り分け・生成（開発中） | `route_to_model` / `dispatch` / `generate` | `dev/ai_router` | `requests` + Ollamaサーバー |
-| クリップボードAI（開発中） | `watch_clipboard` / `process_clipboard_once` | `dev/ai_clipboard` | `pyperclip`（自動貼付は `pyautogui`） |
+| クリップボードAI（開発中） | `watch_clipboard` / `watch_hotkey` / `process_clipboard_once` / `undo_last` / `load_history` | `dev/ai_clipboard` | `pyperclip`（自動貼付は `pyautogui`、ホットキーは `pynput`） |
 | 誤字脱字の校正（開発中） | `correct_text` / `select_model_by_length` | `dev/ai_corrector` | `requests` + Ollamaサーバー |
 | 翻訳・既定は日本語へ（開発中） | `translate_text` / `build_translation_prompt` | `dev/ai_translator` | `requests` + Ollamaサーバー |
 | マウス・画像自動化 | `move_and_click` / `search_color` など | `automation_tools` | `opencv-python` `numpy` `pyautogui` `pynput` |
@@ -191,17 +218,54 @@ python -m base_pyfile.dev.ai_clipboard translate en
 }
 ```
 
+### クリップボードAIの安全機能（プレビュー・履歴・アンドゥ・ホットキー）
+コピーするたびに自動で書き換わる従来の監視モードに加えて、結果を確認してから適用する機能があります。
+
+```bash
+# 結果をクリップボードへ書き戻さず、変更前後とdiffを表示
+python -m base_pyfile.dev.ai_clipboard correct --preview
+
+# 1回だけ処理して書き戻す
+python -m base_pyfile.dev.ai_clipboard correct --once
+
+# 直前の処理前の内容へ戻す（履歴から1件消費）
+python -m base_pyfile.dev.ai_clipboard --undo
+
+# 最近の処理履歴を表示（既定10件、--limitで変更）
+python -m base_pyfile.dev.ai_clipboard --history --limit 20
+
+# クリップボードを常時監視せず、ホットキーを押したときだけ処理
+python -m base_pyfile.dev.ai_clipboard correct --hotkey
+
+# ホットキーを変更（pynput形式）／1回押したら終了
+python -m base_pyfile.dev.ai_clipboard correct --hotkey "<ctrl>+<alt>+j" --once
+
+# 履歴を残さない（機密テキスト向け）
+python -m base_pyfile.dev.ai_clipboard correct --no-history
+```
+
+- `--preview` はクリップボードを変更せず、履歴にも保存しません。適用する場合は `--once` か通常の監視モードを使ってください。
+- 履歴は `%LOCALAPPDATA%\base_pyfile\clipboard_history.jsonl`（macOS/Linux は `~/.local/share/base_pyfile/clipboard_history.jsonl`）に保存され、最新100件だけを保持します。`--history-path` で変更できます。
+- `--undo` は直前の**適用済み**処理を1件取り消し、処理前のテキストをクリップボードへ戻します。プレビューは履歴に残らないため、undo の対象になりません。
+- `--hotkey` には `pynput` が必要です（`pip install ".[automation]"` または `pip install pynput`）。既定は `<ctrl>+<alt>+c` です。
+- `--json` を付けると、プレビュー結果や履歴をJSONで出力できます。`--auto-paste` は書き戻し後に Ctrl+V を送ります（`pyautogui` が必要）。
+- これらは `base-pyfile ai ...` でも同じように使えます（例: `base-pyfile ai correct --preview`）。
+
 ### .bat ランチャー（ダブルクリック／ショートカット起動）
-リポジトリ直下の `ai_clipboard.bat` を使うと、オプション付きでクリップボード監視を起動できます。起動後は常駐し、**クリップボードが更新されるたびに自動で処理**して結果を書き戻します。停止は Ctrl+C。
+リポジトリ直下の `ai_clipboard.bat` を使うと、オプション付きでクリップボード監視を起動できます。通常は起動後も常駐し、**クリップボードが更新されるたびに自動で処理**して結果を書き戻します（停止は Ctrl+C）。`--once` / `--preview` / `--hotkey` を付けた場合は、1回だけ処理するかホットキーを待ち受けます。
 
 ```bat
 ai_clipboard.bat -honyaku       REM コピーした内容を日本語へ翻訳
 ai_clipboard.bat -gojidatuji    REM コピーした内容の誤字脱字を校正
 ai_clipboard.bat -kaitou        REM コピーした内容をAIへ振り分けて回答
 ai_clipboard.bat -honyaku en    REM 翻訳先の言語を指定（既定は ja=日本語）
+ai_clipboard.bat -gojidatuji --preview   REM 書き戻さず差分だけ確認
+ai_clipboard.bat -honyaku en --once      REM 1回だけ処理
+ai_clipboard.bat -gojidatuji --hotkey    REM ホットキーで1回だけ処理
 ai_clipboard.bat -help          REM 使い方を表示
 ```
 
+- `-honyaku` / `-gojidatuji` / `-kaitou` の後ろに付けた引数（`--preview` / `--once` / `--hotkey` / `--undo` / `--history` など）は、そのままPython側のCLIへ渡されます。
 - 内部では `python -m base_pyfile.dev.ai_clipboard <mode>` を呼んでいるだけです（`-honyaku`→`translate`、`-gojidatuji`→`correct`、`-kaitou`→`answer`）。
 - 先頭の `-` は省略可（`honyaku` でも起動できます）。
 - Python は PATH 上の `python` を優先し、無ければ `py` ランチャーを使います。特定のPythonを使いたい場合は bat 内の `set "PY=python"` を書き換えてください。
@@ -231,10 +295,10 @@ python QRreader.py
 - `atomic_write()` は同じディレクトリの一時ファイルに書いて `fsync` してから `os.replace` します。Windows の一時的な `PermissionError` は `retries` 回までリトライします。拡張子の補完はしないので、必要な拡張子はパスに含めてください。
 - `doctor()` は `cv2` / `fitz` などを import せず、`find_spec` で存在だけを確認します。`python -m base_pyfile.diagnostics` で JSON を出力できます。
 - `web_open` の座標・色は意味のある定数（`DEVICE_TOOLBAR_TOGGLE_XY` など）として `web_open.py` 冒頭にまとめています。解像度やブラウザUIが変わったらそこを調整します。
-- 開発中 `ai_clipboard.watch_clipboard()` は無限ループです。`stop_after=N` で回数を制限できます。
+- 開発中 `ai_clipboard.watch_clipboard()` は無限ループです。`stop_after=N` で回数を制限できます。`watch_hotkey()` はホットキーが押されたときだけ処理し、`stop_after=N` で待ち受けを終了できます。履歴・プレビュー・アンドゥの詳細は上記「クリップボードAIの安全機能」を参照してください。
 
 ### テスト
-軽量モジュールの回帰テストは `tests/test_base_pyfile.py`（安定版）と `tests/test_dev_ai.py`（開発中AI）にあります。バージョン方針と changelog の整合性は `tests/test_versioning.py` で確認します。
+軽量モジュールの回帰テストは `tests/test_base_pyfile.py`（安定版）、`tests/test_cli.py`（統合CLI）、`tests/test_dev_ai.py` / `tests/test_ai_clipboard.py`（開発中AI）にあります。バージョン方針と changelog の整合性は `tests/test_versioning.py` で確認します。
 ```bash
 python -m pytest tests -q
 ```
