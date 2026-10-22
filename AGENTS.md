@@ -37,6 +37,12 @@
 - 迷ったら「既存の公開 API 利用コードが変更なしで動くか」で判断する。動かないなら MAJOR。
 - AI/エージェントは作業前に `VERSIONING.md` を読む。外部AIに渡すプロンプト例も同ファイルにある。
 
+## Git 運用
+
+- コミットしたら、原則として `git push` まで実行して `origin` と同期する。
+- push 前に `git fetch` と `git status -sb` でリモートとの差分を確認する。
+- push できない場合（認証・権限・レビュー待ちなど）は、その理由を報告する。
+
 ## 設定・実行
 
 - `base_pyfile/dev/ai_models.json` が Ollama のルーティング・校正・翻訳・agent 設定の実体。モデル追加は JSON の `models` だけでよい。

@@ -14,6 +14,7 @@
 ### Changed
 
 - `AGENTS.md` / `README.md` にバージョン方針への導線を追加。
+- `AGENTS.md` に Git 運用（コミット後の push 同期）を追記。
 - sdist に `VERSIONING.md` / `CHANGELOG.md` / `AGENTS.md` を含める。
 
 ## [4.10.0] - 2026-10-21
