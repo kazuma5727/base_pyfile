@@ -8,8 +8,6 @@ import json
 import os
 from pathlib import Path
 
-import pytest
-
 import base_pyfile
 from base_pyfile import dev
 from base_pyfile.dev import ai_clipboard, ai_corrector, ai_router, ai_translator
@@ -73,7 +71,12 @@ def test_model_profiles_fall_back_to_installed_models():
     )
 
     # CPU版は現在インストール済みの4モデルだけで動く。
-    cpu_installed = ["tev1:0.8b", "qwen2.5:0.5b", "qwen2.5-coder:3b", "deepseek-r1:1.5b"]
+    cpu_installed = [
+        "tev1:0.8b",
+        "qwen2.5:0.5b",
+        "qwen2.5-coder:3b",
+        "deepseek-r1:1.5b",
+    ]
     assert (
         ai_corrector.select_model_by_length(
             "あ" * 500, profiles=cpu, installed=cpu_installed
@@ -119,9 +122,7 @@ def test_model_profile_custom_path_and_missing_fallback(monkeypatch, tmp_path):
     monkeypatch.setenv(ai_router.MODEL_PROFILE_ENV, str(custom))
     assert ai_router._model_profile_path() == custom
 
-    monkeypatch.setenv(
-        ai_router.MODEL_PROFILE_ENV, str(tmp_path / "missing.json")
-    )
+    monkeypatch.setenv(ai_router.MODEL_PROFILE_ENV, str(tmp_path / "missing.json"))
     assert ai_router._model_profile_path().name == "ai_models.json"
 
 
@@ -170,7 +171,9 @@ def test_match_model_name():
     candidates = [{"name": "qwen2.5-coder:3b"}, {"name": "deepseek-r1:1.5b"}]
     assert _match_model_name("qwen2.5-coder:3b", candidates) == "qwen2.5-coder:3b"
     # タグ省略でも一致させる
-    assert _match_model_name("使うのは deepseek-r1 です", candidates) == "deepseek-r1:1.5b"
+    assert (
+        _match_model_name("使うのは deepseek-r1 です", candidates) == "deepseek-r1:1.5b"
+    )
     assert _match_model_name("unknown", candidates) is None
 
 
@@ -207,9 +210,7 @@ def test_select_model_by_length():
 def test_select_model_by_length_falls_back_when_missing():
     # small が未インストールなので fallback の mid が選ばれる
     assert (
-        ai_corrector.select_model_by_length(
-            "short", PROFILES_FOR_CORRECTION, ["mid"]
-        )
+        ai_corrector.select_model_by_length("short", PROFILES_FOR_CORRECTION, ["mid"])
         == "mid"
     )
 

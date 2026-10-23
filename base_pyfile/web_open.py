@@ -28,13 +28,13 @@ logger.addHandler(NullHandler())
 
 # ブラウザUI操作で使う座標・色の定数。
 # 解像度やブラウザのUIが変わった場合はここを調整する。
-POPUP_CLOSE_PROBE_XY = (1090, 680)      # 閉じたいポップアップの確認位置
-POPUP_CLOSE_RGB = (51, 51, 51)          # ポップアップが表示されているときの色
-DEVTOOLS_COLOR_PROBE_XY = (122, 122)    # DevToolsの表示状態を確認する位置
+POPUP_CLOSE_PROBE_XY = (1090, 680)  # 閉じたいポップアップの確認位置
+POPUP_CLOSE_RGB = (51, 51, 51)  # ポップアップが表示されているときの色
+DEVTOOLS_COLOR_PROBE_XY = (122, 122)  # DevToolsの表示状態を確認する位置
 DEVTOOLS_DARK_RGB = (59, 59, 63)
 DEVTOOLS_LIGHT_RGB = (236, 236, 236)
 DEVICE_TOOLBAR_TOGGLE_XY = (2050, 130)  # スマホ表示切替ボタン
-ADDRESS_BAR_XY = (1270, 60)             # アドレスバー
+ADDRESS_BAR_XY = (1270, 60)  # アドレスバー
 
 
 def open_page(
@@ -79,19 +79,19 @@ def open_page(
                     *DEVTOOLS_DARK_RGB, xy=DEVTOOLS_COLOR_PROBE_XY
                 ) or search_color(*DEVTOOLS_LIGHT_RGB, xy=DEVTOOLS_COLOR_PROBE_XY)
                 if not is_dev_tools_ready:
-                    move_and_click(DEVICE_TOOLBAR_TOGGLE_XY) # スマホ表示切替ボタン
+                    move_and_click(DEVICE_TOOLBAR_TOGGLE_XY)  # スマホ表示切替ボタン
                     time.sleep(2)
-                pyautogui.press("F5") # ページをリロードして表示を確定
+                pyautogui.press("F5")  # ページをリロードして表示を確定
                 time.sleep(delay)
 
             if paste_and_go:
                 pyperclip.copy(url)
-                move_and_click(ADDRESS_BAR_XY) # アドレスバーをクリック
+                move_and_click(ADDRESS_BAR_XY)  # アドレスバーをクリック
                 pyautogui.hotkey("ctrl", "a")
                 time.sleep(0.5)
                 pyautogui.hotkey("ctrl", "v")
                 time.sleep(0.5)
-                pyautogui.press("enter") # Enterキーでページ遷移
+                pyautogui.press("enter")  # Enterキーでページ遷移
                 time.sleep(delay)
 
         except Exception as e:
@@ -154,7 +154,7 @@ def tab_delete(count: int = 1, delay: float = 0.3):
         count (int, optional): 閉じるタブの数。デフォルトは1。
         delay (float, optional): 各タブを閉じる操作の間隔(秒)。デフォルトは0.3。
     """
-    time.sleep(1) # 操作の安定性を確保するための待機
+    time.sleep(1)  # 操作の安定性を確保するための待機
     for _ in tqdm(range(count), desc="タブを閉じています"):
         pyautogui.hotkey("ctrl", "w")
         time.sleep(delay)

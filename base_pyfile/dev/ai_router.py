@@ -639,7 +639,9 @@ def main():
 
     print("\n[振り分け先（使ってもらうモデル）]")
     for model in available:
-        print(f"  - {model.get('name')} ({model.get('role')}): {model.get('description')}")
+        print(
+            f"  - {model.get('name')} ({model.get('role')}): {model.get('description')}"
+        )
 
     # ラベル方式の割り当てを表示（A は常に「わからない」固定）
     print("\n[ラベル割り当て]")

@@ -35,7 +35,7 @@ def _convert_value(value: str) -> Any:
 
 def read_config(
     obj: Any,
-    ini_file: Union[str, Path] = Path(__file__).with_name("settings.ini"),
+    ini_file: Union[str, Path, None] = None,
 ) -> None:
     """iniファイルを読み込み、オブジェクトの属性に設定します。
 
@@ -44,20 +44,31 @@ def read_config(
 
     Args:
         obj (Any): 設定を適用するオブジェクト。
-        ini_file (Union[str, Path]): iniファイルのパス。
+        ini_file (Union[str, Path], optional): iniファイルのパス。省略時は
+            パッケージ同梱の ``settings.ini`` を使う。
     """
-    ini_path = Path(ini_file)
+    ini_path = (
+        Path(ini_file)
+        if ini_file is not None
+        else Path(__file__).with_name("settings.ini")
+    )
     config = configparser.ConfigParser()
     if not config.read(ini_path, encoding="utf-8"):
         logger.warning(f"iniファイルを読み込めませんでした: {ini_path}")
         return
 
     # [DEFAULT] は config.sections() に含まれないため、明示的に読む。
-    for key, value in config.defaults().items():
+    defaults = config.defaults()
+    for key, value in defaults.items():
         setattr(obj, key, _convert_value(value))
 
     for section in config.sections():
         for key, value in config.items(section):
+            # config.items(section) は [DEFAULT] の値も継承して返す。
+            # そのまま設定すると、後続セクションを読むたびに DEFAULT の値で
+            # 前のセクションの設定を上書きしてしまうため、継承値はスキップする。
+            if key in defaults and value == defaults[key]:
+                continue
             setattr(obj, key, _convert_value(value))
 
 
@@ -105,7 +116,9 @@ class ExampleConfigurableClass:
         save_config(self, self.ini_file)
 
     def display_settings(self) -> None:
-        print(f"Width: {self.width}, Height: {self.height}, Auto_mode: {self.auto_mode}")
+        print(
+            f"Width: {self.width}, Height: {self.height}, Auto_mode: {self.auto_mode}"
+        )
 
 
 # 使用例

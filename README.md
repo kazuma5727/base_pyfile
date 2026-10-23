@@ -345,7 +345,9 @@ python QRreader.py
 - `get_log_handler()` は `file_path` が実在しなくても動きます。標準外のログレベル（例: 25）でも `LEVEL25` としてファイル名に使え、KeyError になりません。
 - `write_file()` は**拡張子が無いパスにだけ**既定の `.txt` を付けます。`data.json` のように既に拡張子があるパスは尊重し、勝手に `.txt` へ書き換えません。戻り値は書き込み後の `Path` です。書き込みに失敗した場合は `OSError` を送出します（以前のように成功したかのようなパスを返しません）。
 - `read_text_file()` は存在しないファイルに対して例外を投げず、空文字（または空リスト）を返します。UTF-8 BOM は除去して読み込みます。
-- `unique_path()` は「同じパスには同じ接尾辞を再利用」するキャッシュを最大 `path_manager.MAX_EXISTING_FILES`（既定1024）件まで保持し、古いものから捨てます。`reset_existing_files()` で明示的にクリアできます。
+- `unique_path()` は「同じパスには同じ接尾辞を再利用」するキャッシュを最大 `path_manager.MAX_EXISTING_FILES`（既定1024）件まで保持し、古いものから捨てます。`reset_existing_files()` で明示的にクリアできます。`a{}.txt` のようなテンプレートでは、テンプレート外の `a.txt` や `a_.txt` を衝突判定に含めません。
+- `sanitize_windows_filename()` は親ディレクトリを保持したまま、ファイル名と拡張子の不正文字だけを全角文字へ置換します。`dir/file?.txt` は `dir/file？.txt` になり、`dir/dir/...` のようには重複しません。
+- `get_all_subfolders()` の `depth` はルート直下を1階層と数えます。`0` / `1` は直下のみ、`2` 以上はその階層まで、`None` は全階層です。
 - `make_directory(path, is_file=False)` は既定で**常にディレクトリ**として扱います。ファイルパスを渡して親ディレクトリを作りたい場合だけ `is_file=True` を指定してください。ドット入りのディレクトリ名（`folder.with.dot`）も正しく作成できます。
 - 開発中 `ai_router.generate()` のタイムアウト既定は `GENERATE_TIMEOUT`（120秒）です。一覧取得など軽い問い合わせは `LIST_MODELS_TIMEOUT`（5秒）を使います。生成はモデルのロードを含むと時間がかかるため、短いタイムアウトで `answer=None` になりがちでした（修正済み）。
 - `automation_tools.move_and_click()` / `search_color()` は **引数を省略すると「呼び出した瞬間」のマウス位置**を使います（既定値を `None` にして関数内で取得する方式に修正済み）。

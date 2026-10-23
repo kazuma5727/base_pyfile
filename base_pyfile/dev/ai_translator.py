@@ -122,9 +122,7 @@ def translate_text(
 
     translation = profiles.get("translation", {}) or {}
     if not target_language:
-        target_language = (
-            translation.get("target_language") or DEFAULT_TARGET_LANGUAGE
-        )
+        target_language = translation.get("target_language") or DEFAULT_TARGET_LANGUAGE
 
     if not text or not text.strip():
         return {
@@ -156,7 +154,9 @@ def translate_text(
         )
 
     if instruction:
-        prompt = f"{instruction.strip()}\n\n【テキスト】\n{text}\n\n【翻訳後のテキスト】"
+        prompt = (
+            f"{instruction.strip()}\n\n【テキスト】\n{text}\n\n【翻訳後のテキスト】"
+        )
     else:
         prompt = build_translation_prompt(text, target_language=target_language)
 

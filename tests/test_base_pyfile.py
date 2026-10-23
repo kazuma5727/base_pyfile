@@ -22,7 +22,13 @@ from base_pyfile import atomic_write, doctor, function_timer, run_command
 from base_pyfile.file_manager import read_text_file, write_file
 from base_pyfile.ini_filemanager import read_config, save_config
 from base_pyfile.log_setting import get_log_handler, make_logger
-from base_pyfile.path_manager import make_directory, reset_existing_files, unique_path
+from base_pyfile.path_manager import (
+    get_all_subfolders,
+    make_directory,
+    reset_existing_files,
+    sanitize_windows_filename,
+    unique_path,
+)
 from base_pyfile.process_manager import CommandResult
 
 
@@ -152,6 +158,78 @@ def test_reset_existing_files(tmp_path):
     reset_existing_files()
     after_reset = unique_path(str(target))
     assert Path(first).name == Path(after_reset).name == "b1.txt"
+
+
+def test_unique_path_does_not_loop_on_base_name(tmp_path):
+    """a{}.txt と a.txt が共存しても、a1.txt を返して無限ループしないこと。"""
+    reset_existing_files()
+    (tmp_path / "a.txt").write_text("base", encoding="utf-8")
+
+    result = unique_path(str(tmp_path / "a{}.txt"))
+
+    assert Path(result).name == "a1.txt"
+
+
+def test_unique_path_adds_suffix_to_existing_plain_path(tmp_path):
+    reset_existing_files()
+    target = tmp_path / "a.txt"
+    target.write_text("base", encoding="utf-8")
+
+    result = unique_path(str(target))
+
+    assert Path(result).name == "a_1.txt"
+
+
+def test_unique_path_plain_path_is_not_affected_by_suffixed_file(tmp_path):
+    reset_existing_files()
+    (tmp_path / "a_.txt").write_text("base", encoding="utf-8")
+
+    result = unique_path(str(tmp_path / "a.txt"))
+
+    assert Path(result).name == "a.txt"
+
+
+def test_unique_path_reuses_matching_text(tmp_path):
+    reset_existing_files()
+    target = tmp_path / "same{}.txt"
+    existing = tmp_path / "same1.txt"
+    existing.write_text("same content", encoding="utf-8")
+
+    result = unique_path(str(target), existing_text="same content")
+
+    assert Path(result).name == "same1.txt"
+
+
+def test_sanitize_windows_filename_keeps_relative_parent(tmp_path):
+    result = sanitize_windows_filename("dir/file?.txt")
+    assert result == Path("dir") / "file？.txt"
+
+
+def test_sanitize_windows_filename_keeps_dots_in_stem():
+    result = sanitize_windows_filename("file.name?.txt")
+    assert result == Path("file.name？.txt")
+
+
+def test_sanitize_windows_filename_handles_reserved_name_and_suffix():
+    assert sanitize_windows_filename("CON.txt") == Path("CON_file.txt")
+    assert sanitize_windows_filename("file.t?t") == Path("file.t？t")
+
+
+def test_get_all_subfolders_respects_depth(tmp_path):
+    root = tmp_path / "root"
+    child = root / "child"
+    grandchild = child / "grandchild"
+    great_grandchild = grandchild / "great_grandchild"
+    great_grandchild.mkdir(parents=True)
+
+    assert [p.name for p in get_all_subfolders(root, 0)] == ["child"]
+    assert [p.name for p in get_all_subfolders(root, 1)] == ["child"]
+    assert {p.name for p in get_all_subfolders(root, 2)} == {"child", "grandchild"}
+    assert {p.name for p in get_all_subfolders(root)} == {
+        "child",
+        "grandchild",
+        "great_grandchild",
+    }
 
 
 def test_make_directory_creates_and_returns(tmp_path):
@@ -491,6 +569,25 @@ def test_read_config_reads_default_section(tmp_path):
     assert obj.auto_mode is True
     assert obj.negative == -2
     assert isinstance(obj.negative, int)
+
+
+def test_read_config_does_not_let_defaults_override_section_values(tmp_path):
+    ini_file = tmp_path / "settings.ini"
+    ini_file.write_text(
+        "[DEFAULT]\n"
+        "width = 100\n"
+        "[first]\n"
+        "width = 200\n"
+        "[second]\n"
+        "height = 300\n",
+        encoding="utf-8",
+    )
+
+    obj = SimpleNamespace()
+    read_config(obj, ini_file)
+
+    assert obj.width == 200
+    assert obj.height == 300
 
 
 def test_save_config_roundtrip(tmp_path):

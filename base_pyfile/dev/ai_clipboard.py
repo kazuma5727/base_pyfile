@@ -112,9 +112,7 @@ def _read_history(path: Path) -> List[Dict[str, Any]]:
 
 def _write_history(path: Path, entries: List[Dict[str, Any]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    text = "".join(
-        json.dumps(entry, ensure_ascii=False) + "\n" for entry in entries
-    )
+    text = "".join(json.dumps(entry, ensure_ascii=False) + "\n" for entry in entries)
     atomic_write(path, text)
 
 
@@ -130,9 +128,9 @@ def _record_history(
     entries = _read_history(path)
     entries.append(
         {
-            "timestamp": datetime.datetime.now().astimezone().isoformat(
-                timespec="seconds"
-            ),
+            "timestamp": datetime.datetime.now()
+            .astimezone()
+            .isoformat(timespec="seconds"),
             "mode": mode,
             "model": model,
             "original": text,
@@ -661,16 +659,22 @@ def _build_parser() -> argparse.ArgumentParser:
 def _intro(mode: str, language: Optional[str]) -> None:
     if mode == "correct":
         print("=== クリップボード 誤字脱字 校正ツール ===")
-        print("起動後、何かをコピーすると、校正した内容をクリップボードへ書き戻します。")
+        print(
+            "起動後、何かをコピーすると、校正した内容をクリップボードへ書き戻します。"
+        )
         print("そのまま Ctrl+V で、直ったテキストが貼り付けられます。停止は Ctrl+C。")
     elif mode == "translate":
         display_language = language or "設定ファイルの既定値"
         print(f"=== クリップボード 翻訳ツール（{display_language} へ） ===")
-        print("起動後、何かをコピーすると、翻訳した内容をクリップボードへ書き戻します。")
+        print(
+            "起動後、何かをコピーすると、翻訳した内容をクリップボードへ書き戻します。"
+        )
         print("そのまま Ctrl+V で、翻訳結果が貼り付けられます。停止は Ctrl+C。")
     else:
         print("=== クリップボードAI 振り分けツール ===")
-        print("起動後、何かをコピーすると、内容を判断して回答をクリップボードへ書き戻します。")
+        print(
+            "起動後、何かをコピーすると、内容を判断して回答をクリップボードへ書き戻します。"
+        )
         print("そのまま Ctrl+V で貼り付けられます。停止は Ctrl+C。")
     print("安全機能: --preview（差分確認）、--undo（直前を戻す）、--history（履歴）。")
     print(f"ホットキーで1回だけ処理する場合: --hotkey（既定 {DEFAULT_HOTKEY}）")
@@ -758,9 +762,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     if args.preview or args.once:
         source_text = _safe_paste()
-        result = process_clipboard_once(
-            source_text=source_text, **common, **kwargs
-        )
+        result = process_clipboard_once(source_text=source_text, **common, **kwargs)
         if result is None:
             print("クリップボードが空です。", file=sys.stderr)
             return 1

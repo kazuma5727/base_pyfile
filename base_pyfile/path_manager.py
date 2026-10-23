@@ -82,74 +82,67 @@ def unique_path(
 
     # ファイル名と拡張子を分離する
     base, ext = os.path.splitext(file_path)
+    suffix = suffix or ""
 
-    # ファイル名が存在しない場合、そのまま返す
-    if not re.findall(r"{.*?}", file_path):
-        new_path = base + suffix + "{}" + ext
-        check_path = base + "{}" + ext
-        return_path = file_path
-    else:
-        new_path = file_path
-        check_path = file_path
-        return_path = file_path.format(existing_files[file_path])
+    # テンプレート（{} を含む）か、通常のファイル名かに応じて候補を作る。
+    # 以前は候補以外のパス（例: a{}.txt に対する a.txt）も存在確認に含めていたため、
+    # a.txt があるだけで無限ループになることがあった。
+    has_placeholder = bool(re.search(r"{.*?}", file_path))
 
-    # パスが存在しない場合、ディレクトリを作成して返す
-    if not (
-        os.path.exists(new_path.format(""))
-        or os.path.exists(new_path.format(existing_files[file_path]))
-        or os.path.exists(check_path.format(""))
-        or os.path.exists(check_path.format(existing_files[file_path]))
-    ):
-        logger.debug(f"path先に{return_path}ファイルはありませんでした")
+    def _candidate() -> str:
+        if has_placeholder:
+            return file_path.format(existing_files[file_path])
+        return f"{base}{suffix}{existing_files[file_path]}{ext}"
+
+    candidate = _candidate()
+
+    # 通常のファイル名で、まだファイルがない場合は元のパスをそのまま返す。
+    # このとき接尾辞付きの候補（a_1.txt）ではなく a.txt を返す必要がある。
+    if not has_placeholder and not os.path.exists(file_path):
+        logger.debug(f"path先に{file_path}ファイルはありませんでした")
         if ext:
-            make_directory(os.path.dirname(return_path))
+            make_directory(os.path.dirname(file_path))
         else:
-            make_directory(return_path)
-        return return_path
+            make_directory(file_path)
+        return file_path
 
-    while os.path.exists(new_path.format(existing_files[file_path])) or os.path.exists(
-        new_path.format("")
-    ):
+    while os.path.exists(candidate):
         if existing_text:
             # 同一テキストファイル確認
             try:
-                if new_path.format(existing_files[file_path]) and existing_text:
-                    from base_pyfile.file_manager import read_text_file
+                from base_pyfile.file_manager import read_text_file
 
-                    before_text = read_text_file(
-                        new_path.format(existing_files[file_path])
-                    )
-                    if before_text == existing_text:
-                        logger.info("同じテキストがあります")
-                        return new_path.format(existing_files[file_path])
+                before_text = read_text_file(candidate)
+                if before_text == existing_text:
+                    logger.info("同じテキストがあります")
+                    return candidate
             except ImportError:
                 logger.error("module_pathが通っていない可能性があります")
 
-        if existing_image:
+        if existing_image is not None:
             # 同一画像ファイル確認
             try:
                 import cv2
                 import numpy as np
 
-                if new_path.format(existing_files[file_path]) and isinstance(
-                    existing_image, np.ndarray
+                if isinstance(existing_image, np.ndarray) and np.array_equal(
+                    cv2.imread(candidate),
+                    existing_image,
                 ):
-                    if np.array_equal(
-                        cv2.imread(new_path.format(existing_files[file_path])),
-                        existing_image,
-                    ):
-                        logger.info("同じ画像があります")
-                        return new_path.format(existing_files[file_path])
+                    logger.info("同じ画像があります")
+                    return candidate
             except ImportError:
                 logger.warning("画像検索できません")
 
         existing_files[file_path] += 1
-    if ext:
-        make_directory(os.path.dirname(new_path.format(existing_files[file_path])))
-    else:
-        make_directory(new_path.format(existing_files[file_path]))
+        candidate = _candidate()
 
-    return new_path.format(existing_files[file_path])
+    if ext:
+        make_directory(os.path.dirname(candidate))
+    else:
+        make_directory(candidate)
+
+    return candidate
 
 
 def _make_directory(directory: Path) -> None:
@@ -203,9 +196,7 @@ def get_files(directory: Path, choice_key: str = "") -> List[Path]:
             if files.is_file() and choice_key in files.name
         ]
         if directory.is_dir()
-        else [directory]
-        if directory.is_file() and choice_key in directory.name
-        else []
+        else [directory] if directory.is_file() and choice_key in directory.name else []
     )
 
 
@@ -218,7 +209,8 @@ def get_all_subfolders(
 
     Args:
         directory (Union[str, Path]): 検索対象のディレクトリパス
-        depth (Optional[int]): 検索する階層数。Noneの場合、全階層を検索する。
+        depth (Optional[int]): 検索する階層数。0 または 1 は直下のみ、
+            2 以上はその階層まで、None は全階層を検索する。
 
     Returns:
         List[Path]: ディレクトリパスのリスト（自然順にソートされている）
@@ -231,19 +223,23 @@ def get_all_subfolders(
 
         Args:
             directory (Path): 検索対象のディレクトリパス
-            depth (Optional[int]): 検索する階層数。Noneの場合、全階層を検索する。
+            depth (Optional[int]): 検索する階層数。None の場合は全階層。
 
         Returns:
             List[Path]: ディレクトリパスのリスト
         """
         subfolders = []
         for entry in directory.iterdir():
-            if entry.is_dir():
-                if depth is None or depth >= 1:
-                    subfolders.extend(
-                        get_subfolders(entry, depth - 1 if depth else None)
-                    )
-                subfolders.append(entry)
+            if not entry.is_dir():
+                continue
+
+            # depth は「ルート直下を1階層」と数える。0 は旧仕様との互換のため
+            # 直下のみを返す。depth=1 で子の子まで返していた以前の off-by-one を修正。
+            if depth is None:
+                subfolders.extend(get_subfolders(entry, None))
+            elif depth > 1:
+                subfolders.extend(get_subfolders(entry, depth - 1))
+            subfolders.append(entry)
 
         return subfolders
 
@@ -273,7 +269,9 @@ def get_all_files(
         file_paths.extend(files)
 
     if natsorted == sorted:
-        logger.warning("sort関数を使用しているため、予期せぬ並び順になっている場合があります")
+        logger.warning(
+            "sort関数を使用しているため、予期せぬ並び順になっている場合があります"
+        )
     return natsorted(file_paths)
 
 
@@ -291,7 +289,7 @@ def get_folders_and_files(directory: Union[str, Path]) -> List[Path]:
 
 
 def find_empty_folders(
-    folder_list: Union[str, Path, List[Union[str, Path]]]
+    folder_list: Union[str, Path, List[Union[str, Path]]],
 ) -> List[Path]:
     """
     渡されたフォルダのリストから、空のフォルダを探してリストで返す。
@@ -347,9 +345,12 @@ def sanitize_windows_filename(non_regular_path: Union[str, Path]) -> Path:
     # 入力のパス文字列をPathオブジェクトに変換します
     non_regular_path = Path(non_regular_path)
 
-    # ファイル名の不正な文字を置換して、正規のファイル名を取得します
-    regular_path = Path((non_regular_path.stem).translate(translation_table).strip())
-    base_name = regular_path.stem
+    # ファイル名の不正な文字を置換して、正規のファイル名を取得します。
+    # 拡張子側にも不正な文字が含まれることがあるため、stem と suffix を分けて処理します。
+    base_name = non_regular_path.stem.translate(translation_table).strip().rstrip(" .")
+    suffix = non_regular_path.suffix.translate(translation_table).strip()
+    if not base_name:
+        base_name = "_"
 
     # 特定の文字列はWindowsファイルシステムで予約されており、ファイル名として使用できないため、
     # 予約された文字列の場合は"_file"を付加して回避します
@@ -379,11 +380,9 @@ def sanitize_windows_filename(non_regular_path: Union[str, Path]) -> Path:
     ]:
         base_name += "_file"
 
-    # 置換と予約文字列の処理を終えた正規化されたファイル名を元のパスと結合して、
-    # 不正な文字を置換した正規化されたパスを取得します
-    sanitized_path = non_regular_path.with_name(base_name + non_regular_path.suffix)
-
-    return non_regular_path.parent / sanitized_path
+    # 置換と予約文字列の処理を終えた正規化されたファイル名を元のパスと結合します。
+    # with_name() は親ディレクトリを保持するため、parent を再度結合しません。
+    return non_regular_path.with_name(base_name + suffix)
 
 
 def get_latest_folder(directory: str) -> Path:

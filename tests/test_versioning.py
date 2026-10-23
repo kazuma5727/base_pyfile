@@ -10,7 +10,6 @@ from pathlib import Path
 
 import base_pyfile
 
-
 ROOT = Path(__file__).resolve().parents[1]
 RELEASE_HEADING = re.compile(
     r"^## \[(?P<version>\d+\.\d+\.\d+)\] - (?P<date>\d{4}-\d{2}-\d{2})$",
@@ -62,7 +61,9 @@ def test_changelog_headings_are_well_formed():
     headings = CHANGELOG_HEADING.findall(_read("CHANGELOG.md"))
     assert headings
     for heading in headings:
-        assert heading == "## [Unreleased]" or RELEASE_HEADING.fullmatch(heading), heading
+        assert heading == "## [Unreleased]" or RELEASE_HEADING.fullmatch(
+            heading
+        ), heading
 
 
 def test_changelog_releases_are_unique_and_ordered():
@@ -70,7 +71,9 @@ def test_changelog_releases_are_unique_and_ordered():
     assert entries
 
     versions = [version for version, _ in entries]
-    assert len(versions) == len(set(versions)), f"バージョンが重複しています: {versions}"
+    assert len(versions) == len(
+        set(versions)
+    ), f"バージョンが重複しています: {versions}"
     version_keys = [_version_key(version) for version in versions]
     assert version_keys == sorted(
         version_keys, reverse=True

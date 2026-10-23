@@ -94,7 +94,7 @@ def _dependency_report() -> Dict[str, Dict[str, Any]]:
 
 
 def _feature_report(
-    dependencies: Dict[str, Dict[str, Any]]
+    dependencies: Dict[str, Dict[str, Any]],
 ) -> Tuple[Dict[str, Dict[str, Any]], List[str]]:
     features: Dict[str, Dict[str, Any]] = {}
     warnings: List[str] = []

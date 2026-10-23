@@ -18,7 +18,7 @@ from typing import List, Optional, Tuple, Union
 
 # --- 独自モジュールのインポート ---
 from base_pyfile.log_setting import get_log_handler, make_logger
-from base_pyfile.path_manager import get_files, make_directory, unique_path
+from base_pyfile.path_manager import make_directory, unique_path
 
 # --- ロガーの初期設定 ---
 logger = getLogger("log").getChild(__name__)
@@ -79,7 +79,9 @@ def read_text_file(
             logger.error(f"'{file_path}' の読み込みに失敗しました: {e}")
             return _empty_result()
     else:
-        logger.warning(f"'{file_path}' をどのエンコーディングでも開けませんでした。空の文字列を返します。")
+        logger.warning(
+            f"'{file_path}' をどのエンコーディングでも開けませんでした。空の文字列を返します。"
+        )
         return _empty_result()
 
     # 区切り文字で分割
@@ -124,7 +126,9 @@ def write_file(
         OSError: ファイルのオープンまたは書き込みに失敗した場合。
     """
     if write_mode not in {"w", "a", "x"}:
-        raise ValueError(f"write_mode は 'w' / 'a' / 'x' のいずれかです: {write_mode!r}")
+        raise ValueError(
+            f"write_mode は 'w' / 'a' / 'x' のいずれかです: {write_mode!r}"
+        )
 
     file_path = Path(file_path)
     write_text = str(write_text)
@@ -149,10 +153,14 @@ def write_file(
     if backup and file_path.exists():
         # 追記モードでない、かつファイル内容が異なる場合のみバックアップ
         if write_mode == "w" and read_text_file(file_path) != write_text:
-            logger.info(f"ファイル内容が異なるため、'{file_path}' のバックアップを作成します。")
+            logger.info(
+                f"ファイル内容が異なるため、'{file_path}' のバックアップを作成します。"
+            )
             backup_file(file_path)
         else:
-            logger.debug(f"'{file_path}' は内容が同一か追記モードのため、バックアップはスキップします。")
+            logger.debug(
+                f"'{file_path}' は内容が同一か追記モードのため、バックアップはスキップします。"
+            )
 
     # ファイルへの書き込み
     try:
@@ -324,7 +332,9 @@ def backup_file(file_path: Union[str, Path], use_datestamp: bool = True) -> None
     # ファイルをコピーしてバックアップを作成
     try:
         shutil.copy2(file_path, final_backup_path)
-        logger.info(f"'{file_path}' のバックアップを '{final_backup_path}' に作成しました。")
+        logger.info(
+            f"'{file_path}' のバックアップを '{final_backup_path}' に作成しました。"
+        )
     except IOError as e:
         logger.error(f"バックアップの作成に失敗しました: {e}")
 
@@ -354,7 +364,7 @@ if __name__ == "__main__":
 
     # --- backup_file のテスト ---
     print("\n--- backup_file test ---")
-    write_file(test_file, "更新された内容") # 内容を更新してバックアップをトリガー
+    write_file(test_file, "更新された内容")  # 内容を更新してバックアップをトリガー
     backup_file(test_file)
     backup_file(test_file, use_datestamp=False)
 

@@ -23,7 +23,7 @@ editable インストールのときだけ、後方互換のため公開名に�
 import importlib
 from typing import Any, Dict
 
-from base_pyfile._version import __version__
+from base_pyfile._version import __version__ as __version__
 
 # 安定版として公開する名前（この一覧は後方互換のために明示的に保持する）
 __all__ = [
@@ -121,8 +121,8 @@ _MODULE_OF: Dict[str, str] = {
 # 安定版 wheel には dev が含まれないため、ImportError になった場合は
 # 安定版の名前だけを公開する。
 try:
-    from base_pyfile.dev import __all__ as _dev_all
     from base_pyfile.dev import _MODULE_OF as _dev_module_of
+    from base_pyfile.dev import __all__ as _dev_all
 except ImportError:
     pass
 else:

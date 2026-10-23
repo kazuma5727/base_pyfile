@@ -199,9 +199,7 @@ def test_main_undo(monkeypatch, tmp_path, capsys):
         ai_clipboard, "_safe_copy", lambda text: copied.append(text) or True
     )
 
-    exit_code = ai_clipboard.main(
-        ["--undo", "--history-path", str(history_path)]
-    )
+    exit_code = ai_clipboard.main(["--undo", "--history-path", str(history_path)])
 
     assert exit_code == 0
     assert copied == ["before"]

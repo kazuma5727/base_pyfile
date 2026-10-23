@@ -33,7 +33,9 @@ def _build_parser() -> argparse.ArgumentParser:
     doctor_parser.add_argument("--json", action="store_true", help="JSONで出力する")
 
     run_parser = subparsers.add_parser("run", help="外部コマンドを実行する")
-    run_parser.add_argument("--timeout", type=float, default=None, help="タイムアウト秒")
+    run_parser.add_argument(
+        "--timeout", type=float, default=None, help="タイムアウト秒"
+    )
     run_parser.add_argument("--cwd", type=Path, default=None, help="作業ディレクトリ")
     run_parser.add_argument("--encoding", default=None, help="入出力の文字コード")
     run_parser.add_argument(
@@ -52,14 +54,14 @@ def _build_parser() -> argparse.ArgumentParser:
 
     pdf_parser = subparsers.add_parser("pdf-to-png", help="PDFをPNGに変換する")
     pdf_parser.add_argument("input", type=Path)
-    pdf_parser.add_argument("-o", "--output", type=Path, default=None, help="出力フォルダ")
+    pdf_parser.add_argument(
+        "-o", "--output", type=Path, default=None, help="出力フォルダ"
+    )
     pdf_parser.add_argument(
         "--dpi", type=int, default=None, help="解像度（例: 200。既定はPyMuPDFの既定値）"
     )
 
-    tiff_parser = subparsers.add_parser(
-        "tiff-to-pdf", help="TIFFをPDFに変換する"
-    )
+    tiff_parser = subparsers.add_parser("tiff-to-pdf", help="TIFFをPDFに変換する")
     tiff_parser.add_argument("input", type=Path)
     tiff_parser.add_argument("-o", "--output", type=Path, default=None, help="出力PDF")
 

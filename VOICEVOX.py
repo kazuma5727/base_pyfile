@@ -1,7 +1,6 @@
 import json
 import os
 import re
-import site
 import subprocess
 import time
 import wave
@@ -22,13 +21,11 @@ except ImportError:
 
 
 from base_pyfile import (
-    get_files,
     get_log_handler,
     logger_timer,
     make_logger,
     read_text_file,
     unique_path,
-    write_file,
 )
 
 logger = getLogger("log").getChild(__name__)
@@ -50,7 +47,7 @@ def _get_speaker_data() -> List[Dict]:
                 # 取得したデータを返す
                 return _get_speaker_data.cache
 
-            except:
+            except Exception:
                 # エラーが発生した場合はリトライする
                 interval = 1 + i / 10
                 logger.info(f"出力失敗{interval}秒待ちます")
@@ -128,12 +125,16 @@ def call_speaker_name_by_id(speaker_id: int = 3) -> int:
             return speaker_id
         # 検索したIDがノーマルスピーカーのIDの範囲外の場合、最初のIDに戻って再検索する
         elif speaker_id > max(normal_speakers.keys()):
-            logger.warning("全てのキャラクターを検索しました。最初のキャラクターに戻ります。")
+            logger.warning(
+                "全てのキャラクターを検索しました。最初のキャラクターに戻ります。"
+            )
             speaker_id = 1
         # 検索したIDがノーマルスピーカーのIDではない場合、次のIDを検索する
         else:
             speaker_id += 1
-            logger.debug(f"{speaker_id} はノーマルスピーカーのIDではありません。次のIDに移動します。")
+            logger.debug(
+                f"{speaker_id} はノーマルスピーカーのIDではありません。次のIDに移動します。"
+            )
 
 
 @logger_timer()
@@ -158,7 +159,9 @@ def generate_wav(text: str, speaker: int = 3, output_path: str = "audio.wav") ->
     for i in range(10):
         try:
             with requests.Session() as session:
-                response1 = session.post(f"http://{host}:{port}/audio_query", params=params)
+                response1 = session.post(
+                    f"http://{host}:{port}/audio_query", params=params
+                )
                 response2 = session.post(
                     f"http://{host}:{port}/synthesis",
                     headers={"Content-Type": "application/json"},
@@ -172,7 +175,7 @@ def generate_wav(text: str, speaker: int = 3, output_path: str = "audio.wav") ->
                     wf.writeframes(response2.content)
             return True
 
-        except:
+        except Exception:
             interval = 1 + i / 10
             logger.info(f"出力失敗{interval}秒待ちます")
             time.sleep(interval)
@@ -258,7 +261,9 @@ def VOICEVOX_output(
             speaker + voice_number,
             unique_path(
                 output_dir
-                / zero_count.format(e + _e, get_speaker_name_by_id(speaker + voice_number)),
+                / zero_count.format(
+                    e + _e, get_speaker_name_by_id(speaker + voice_number)
+                ),
             ),
         )
 

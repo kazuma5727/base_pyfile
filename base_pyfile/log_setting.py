@@ -1,9 +1,6 @@
 import sys
 from logging import (
-    CRITICAL,
     DEBUG,
-    ERROR,
-    INFO,
     WARNING,
     FileHandler,
     Formatter,
@@ -88,7 +85,7 @@ def make_logger(
     logger_name: str = "log",
     level: int = DEBUG,
     log_folder: str = "",
-    handler: Handler = None,
+    handler: Optional[Handler] = None,
     log_format: str = DEFAULT_LOG_FORMAT,
 ) -> Logger:
     """ロガーを取得する
@@ -122,10 +119,12 @@ def make_logger(
             logger.debug("既存ハンドラの close に失敗しました", exc_info=True)
 
     # handlerが与えられた場合はそれを使用し、与えられなかった場合はget_log_handler()関数で作成したハンドラを使用
-    if handler:
+    if handler is not None:
         target_handler = handler
     else:
-        target_handler = get_log_handler(level, log_folder=log_folder, log_format=log_format)
+        target_handler = get_log_handler(
+            level, log_folder=log_folder, log_format=log_format
+        )
     logger.addHandler(target_handler)
 
     # レベルを設定

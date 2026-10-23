@@ -20,7 +20,7 @@ logger.addHandler(NullHandler())
 
 
 # 指定の座標に移動してクリックする関数
-def fast_click(position: Union[Tuple[int, int], int], y: int = None) -> None:
+def fast_click(position: Union[Tuple[int, int], int], y: Optional[int] = None) -> None:
     """
     指定された座標(x, y)でマウスの左クリックを行う関数。
     座標はタプル(x, y)またはxとyの別々の引数として渡すことができる。
@@ -68,6 +68,9 @@ def learning_materials(
     Returns:
         tuple[int, int]: バウンディングボックスの中心座標 (x, y) のタプル。
     """
+    if probability < 1:
+        raise ValueError("probability は1以上を指定してください。")
+
     # バウンディングボックスの中心座標を取得
     if np.random.randint(1, probability + 1) == 1:
         image = cv2.cvtColor(np.array(pyautogui.screenshot()), cv2.COLOR_RGB2BGR)
@@ -79,7 +82,7 @@ def learning_materials(
             width / w,
             height / h,
         )
-        learn = unique_path("learn\materials_{}.png")
+        learn = unique_path(str(Path("learn") / "materials_{}.png"))
         cv2.imwrite(str(learn), image)
         # 拡張子をpngから、txtに変更
         write_file(Path(learn).with_suffix(".txt"), text)
@@ -88,11 +91,11 @@ def learning_materials(
 
 
 def move_and_click(
-    x_position: Union[int, tuple, None] = None,
-    y_position: int = None,
+    x_position: Union[int, tuple, list, None] = None,
+    y_position: Optional[int] = None,
     x_error: int = 0,
     y_error: int = 0,
-    t: float = None,
+    t: Optional[float] = None,
     accelerator: float = 0,
     ctrl: bool = False,
     learning_probability: int = 0,
@@ -116,7 +119,7 @@ def move_and_click(
     if x_position is None:
         # 引数省略時は「呼び出した瞬間」のマウス位置を使う（既定値は定義時に固定されるため None を既定にする）
         x_position = pyautogui.position()
-    if isinstance(x_position, tuple) or isinstance(x_position, list):
+    if isinstance(x_position, (tuple, list)):
         x, y = x_position
     else:
         x = x_position
@@ -155,7 +158,7 @@ def move_and_click(
 
     if learning_probability:
         # 学習用の画像を保存する関数を呼び出し
-        if isinstance(x_position, tuple):
+        if isinstance(x_position, (tuple, list)):
             learning_materials(*x_position, probability=learning_probability)
         else:
             learning_materials(x_position, y_position, probability=learning_probability)
@@ -242,7 +245,9 @@ def search_color(
         image = cv2.cvtColor(np.array(pyautogui.screenshot()), cv2.COLOR_RGB2BGR)
     elif isinstance(image, (str, Path)):
         image = cv2.imread(str(image))
-    # スクリーンショットを取得し、BGR形式に変換
+
+    if image is None:
+        raise ValueError("画像を読み込めませんでした。パスを確認してください。")
 
     # 指定された座標の色を取得
     color = image[y, x]
@@ -314,14 +319,20 @@ def specified_color(
     """
     if isinstance(RGB, (tuple, list)):
         if len(RGB) != 3:
-            raise ValueError("RGBは3つの整数からなるタプルまたはリストでなければなりません。")
+            raise ValueError(
+                "RGBは3つの整数からなるタプルまたはリストでなければなりません。"
+            )
         R, G, B = RGB
     elif isinstance(RGB, int):
         if G is None or B is None:
-            raise ValueError("RGBを個別の整数として提供する場合、GとBも指定する必要があります。")
+            raise ValueError(
+                "RGBを個別の整数として提供する場合、GとBも指定する必要があります。"
+            )
         R = RGB
     else:
-        raise ValueError("RGBは、タプル、リスト、または赤成分を表す整数でなければなりません。")
+        raise ValueError(
+            "RGBは、タプル、リスト、または赤成分を表す整数でなければなりません。"
+        )
 
     if image is None:
         image = cv2.cvtColor(np.array(pyautogui.screenshot()), cv2.COLOR_RGB2BGR)
@@ -372,9 +383,7 @@ def specified_color(
         return ret
 
     xy_list = []
-    areas_and_labels = [
-        (stats[i, cv2.CC_STAT_AREA], i) for i in range(1, num_labels)
-    ]
+    areas_and_labels = [(stats[i, cv2.CC_STAT_AREA], i) for i in range(1, num_labels)]
     areas_and_labels.sort(reverse=True, key=lambda x: x[0])
 
     for area, label in areas_and_labels:
@@ -456,6 +465,7 @@ def specified_color(
 
     ret = (x + plus_x, y + plus_y)
     return True if found else ret
+
 
 def specified_color_fast_ver(
     RGB: tuple[int, int, int] | list[int] | int,
@@ -816,7 +826,7 @@ def full_templatematching(
     xy_list = []
 
     # 一致箇所を元画像にマーキング（image はコピーなので呼び出し元には影響しない）
-    for pt in zip(*loc[::-1]):
+    for pt in zip(*loc[::-1], strict=True):
         # 重複チェック
         is_unique = True
         for existing_pt in unique_loc:

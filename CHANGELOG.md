@@ -14,10 +14,17 @@
 
 - `ai_clipboard` に `--profile` オプションを追加。`base-pyfile ai ...` と `.bat` ランチャーからも指定できる。
 - `README.md` / `AGENTS.md` にモデル構成の切り替え方とOllamaモデルの導入例を追記。
+- パッケージ・テスト・スクリプト・リポジトリ直下の独立Pythonファイルを Black / isort（black プロファイル）で整形。あわせて未使用 import を整理した。
+- `get_all_subfolders()` の `depth` を「ルート直下を1階層」と数えるように修正。`depth=1` が子の子まで返していた off-by-one を解消した（`depth=0` は従来どおり直下のみ）。
 
 ### Fixed
 
 - `is_model_installed()` が `qwen2.5:1.5b` を `qwen2.5:0.5b` のインストール済み判定に巻き込んでいた問題を修正。タグを明示したモデルは完全一致で判定し、タグ省略時だけファミリー一致を許可する。
+- `unique_path("a{}.txt")` と `a.txt` が共存すると無限ループしていた問題を修正。テンプレートの候補以外（`a.txt` や `a_.txt`）を存在確認に含めず、通常ファイル名には衝突時だけ接尾辞を付けるようにした。`existing_image` に NumPy 配列を渡したときの真偽値評価エラーも修正。
+- `sanitize_windows_filename()` が相対パスの親ディレクトリを重複させていた問題を修正。ファイル名の途中のドット、拡張子内の不正文字、末尾のドット・空白も正規化する。
+- `read_config()` で `[DEFAULT]` の継承値が後続セクションの値を上書きしていた問題を修正。セクション固有の値だけを適用する。
+- `automation_tools.learning_materials()` の invalid escape sequence (`\m`) を修正。`probability < 1` と画像読み込み失敗を明確な `ValueError` にした。
+- `pdf_tiff_converter` で変換途中に例外が起きた場合も、作成済みの PDF/TIFF 画像リソースを解放するようにした。未対応拡張子の検証を出力フォルダ作成より先に行う。
 
 ## [4.11.0] - 2026-10-22
 

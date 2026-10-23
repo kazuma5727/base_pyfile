@@ -140,6 +140,11 @@ def convert_to_png(
         ValueError: 対応していない拡張子、または ``dpi`` が 1 未満の場合。
     """
     input_path = Path(input_path)
+    suffix = input_path.suffix.lower()
+    if suffix not in {".pdf", ".tiff", ".tif"}:
+        # 未対応形式のときに空の出力フォルダだけ作らないよう、先に検証する。
+        raise ValueError(f"Unsupported file format: {input_path.suffix}")
+
     output_folder = (
         Path(output_folder)
         if output_folder is not None
@@ -147,13 +152,10 @@ def convert_to_png(
     )
     output_folder.mkdir(parents=True, exist_ok=True)
 
-    suffix = input_path.suffix.lower()
     if suffix == ".pdf":
         pdf_to_png(input_path, output_folder, png_name, dpi=dpi)
-    elif suffix in {".tiff", ".tif"}:
-        tiff_to_png(input_path, output_folder, png_name)
     else:
-        raise ValueError(f"Unsupported file format: {input_path.suffix}")
+        tiff_to_png(input_path, output_folder, png_name)
 
 
 def image_to_pdf(image_files: List[ImagePath], output_pdf: ImagePath) -> None:
@@ -181,15 +183,15 @@ def image_to_pdf(image_files: List[ImagePath], output_pdf: ImagePath) -> None:
             elif isinstance(image, Image.Image):
                 source = image
             else:
-                raise TypeError(f"画像パスまたは PIL.Image を指定してください: {image!r}")
+                raise TypeError(
+                    f"画像パスまたは PIL.Image を指定してください: {image!r}"
+                )
             converted = source.convert("RGB")
             if converted is not source:
                 stack.callback(converted.close)
             rgb_images.append(converted)
 
-        rgb_images[0].save(
-            output_pdf, save_all=True, append_images=rgb_images[1:]
-        )
+        rgb_images[0].save(output_pdf, save_all=True, append_images=rgb_images[1:])
     logger.debug(f"Saved {output_pdf}")
 
 
@@ -211,21 +213,20 @@ def tiff_to_pdf(tiff_path: ImagePath, output_pdf: ImagePath | None = None) -> No
     output_pdf.parent.mkdir(parents=True, exist_ok=True)
 
     rgb_images: List[Image.Image] = []
-    with Image.open(tiff_path) as tiff_image:
-        for page_num in range(tiff_image.n_frames):
-            tiff_image.seek(page_num)
-            rgb_images.append(tiff_image.convert("RGB"))
+    try:
+        with Image.open(tiff_path) as tiff_image:
+            for page_num in range(tiff_image.n_frames):
+                tiff_image.seek(page_num)
+                rgb_images.append(tiff_image.convert("RGB"))
 
         if not rgb_images:
             raise ValueError("TIFFにページがありません。PDFを作成できません。")
 
-        try:
-            rgb_images[0].save(
-                output_pdf, save_all=True, append_images=rgb_images[1:]
-            )
-        finally:
-            for image in rgb_images:
-                image.close()
+        rgb_images[0].save(output_pdf, save_all=True, append_images=rgb_images[1:])
+    finally:
+        # 変換途中で例外が起きても、作成済みの画像を解放する。
+        for image in rgb_images:
+            image.close()
     logger.debug(f"Saved {output_pdf}")
 
 
@@ -247,27 +248,28 @@ def pdf_to_tiff(pdf_path: ImagePath, output_tiff: ImagePath | None = None) -> No
     output_tiff.parent.mkdir(parents=True, exist_ok=True)
 
     image_files: List[Image.Image] = []
-    with fitz.open(str(pdf_path)) as pdf_document:
-        for page_num in range(len(pdf_document)):
-            page = pdf_document.load_page(page_num)
-            pix = page.get_pixmap()
-            image_files.append(
-                Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
-            )
+    try:
+        with fitz.open(str(pdf_path)) as pdf_document:
+            for page_num in range(len(pdf_document)):
+                page = pdf_document.load_page(page_num)
+                pix = page.get_pixmap()
+                image_files.append(
+                    Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
+                )
 
         if not image_files:
             raise ValueError("PDFにページがありません。TIFFを作成できません。")
 
-        try:
-            image_files[0].save(
-                output_tiff,
-                save_all=True,
-                append_images=image_files[1:],
-                format="TIFF",
-            )
-        finally:
-            for image in image_files:
-                image.close()
+        image_files[0].save(
+            output_tiff,
+            save_all=True,
+            append_images=image_files[1:],
+            format="TIFF",
+        )
+    finally:
+        # 変換途中で例外が起きても、作成済みの画像を解放する。
+        for image in image_files:
+            image.close()
     logger.debug(f"Saved {output_tiff}")
 
 

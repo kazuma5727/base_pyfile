@@ -35,7 +35,9 @@ def test_run_success(capsys):
 
 def test_run_with_separator(capsys):
     assert (
-        cli.main(["run", "--timeout", "30", "--", sys.executable, "-c", "print('separated')"])
+        cli.main(
+            ["run", "--timeout", "30", "--", sys.executable, "-c", "print('separated')"]
+        )
         == 0
     )
     assert "separated" in capsys.readouterr().out
@@ -72,9 +74,7 @@ def test_pdf_to_png_dispatches(monkeypatch, tmp_path):
     input_path = tmp_path / "input.pdf"
     output = tmp_path / "out"
     assert (
-        cli.main(
-            ["pdf-to-png", str(input_path), "-o", str(output), "--dpi", "200"]
-        )
+        cli.main(["pdf-to-png", str(input_path), "-o", str(output), "--dpi", "200"])
         == 0
     )
     assert calls == [(input_path, output, 200)]
@@ -94,10 +94,7 @@ def test_tiff_to_pdf_dispatches(monkeypatch, tmp_path):
 
 def test_ai_subcommand_history(tmp_path, capsys):
     history_path = tmp_path / "history.jsonl"
-    assert (
-        cli.main(["ai", "--history", "--history-path", str(history_path)])
-        == 0
-    )
+    assert cli.main(["ai", "--history", "--history-path", str(history_path)]) == 0
     assert "履歴はありません" in capsys.readouterr().out
 
 

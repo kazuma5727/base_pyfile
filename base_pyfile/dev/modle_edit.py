@@ -67,6 +67,7 @@ def load_valid_models():
 
     return valid_models
 
+
 def format_models_for_router(available_models):
     """
     load_valid_models() から返ってきた利用可能なモデルリストを、
@@ -76,20 +77,20 @@ def format_models_for_router(available_models):
         return "利用可能なモデルがありません。"
 
     lines = []
-    
+
     # 1. 識別用の番号（1始まり）をループで振っていく
     for index, model in enumerate(available_models, start=1):
         name = model.get("name", "unknown")
-        
+
         # 2. 判断に不要なdescriptionやroleは捨て、必要な情報だけを抽出
         # 万が一JSON側に項目がなかった場合（KeyError）を防ぐため、.get() で安全に取得
         best_for_list = model.get("best_for", [])
         avoid_for_list = model.get("avoid_for", [])
-        
+
         # 3. ルーターが読みやすいように、リストを「、」区切りのシンプルな1行の文字列にする
         best_for_str = "、".join(best_for_list) if best_for_list else "特になし"
         avoid_for_str = "、".join(avoid_for_list) if avoid_for_list else "特になし"
-        
+
         # 4. 余計な修飾文字（記号など）を減らし、AIが上から順にスキャンしやすい箇条書きにする
         model_text = (
             f"[{index}] {name}\n"
@@ -97,10 +98,9 @@ def format_models_for_router(available_models):
             f"  - 苦手: {avoid_for_str}"
         )
         lines.append(model_text)
-    
+
     # すべてのモデルテキストを改行で連結
     return "\n".join(lines)
-
 
 
 # ==========================================
@@ -118,15 +118,14 @@ if __name__ == "__main__":
     available_models_cached = load_valid_models()
     print(available_models_cached)
 
-
-# ==========================================
-# 🚀 動作確認（前回の関数からデータが渡ってきたと仮定）
-# ==========================================
+    # ==========================================
+    # 🚀 動作確認（前回の関数からデータが渡ってきたと仮定）
+    # ==========================================
     # load_valid_models() から返ってくるデータのダミー（実際はJSONから自動で読み込まれます）
     mock_available_models = available_models_cached
 
     # 関数を実行して加工結果を取得
     ai_friendly_text = format_models_for_router(mock_available_models)
-    
+
     print("【🤖 ルーターAIに渡すための、加工済みテキスト】\n")
     print(ai_friendly_text)

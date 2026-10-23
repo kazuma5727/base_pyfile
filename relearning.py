@@ -1,25 +1,17 @@
 import os
-import sys
 from logging import NullHandler, getLogger
 from pathlib import Path
-from typing import List, Union
+from typing import List, Optional, Union
 
-import cv2
 import numpy as np
 from natsort import natsorted
 from tqdm import tqdm
 
 from base_pyfile import (
-    get_all_files,
-    get_all_subfolders,
     get_files,
-    get_folders_and_files,
     get_log_handler,
-    logger_timer,
-    make_directory,
     make_logger,
     read_text_file,
-    unique_path,
     write_file,
 )
 
@@ -27,7 +19,7 @@ logger = getLogger("log").getChild(__name__)
 logger.addHandler(NullHandler())
 
 
-def reannotation(file_path: str, class_range: List[str] = ["0"]) -> str:
+def reannotation(file_path: str, class_range: Optional[List[str]] = None) -> str:
     """
     指定されたファイルのデータを再注釈します。
 
@@ -39,25 +31,31 @@ def reannotation(file_path: str, class_range: List[str] = ["0"]) -> str:
         str: 再注釈されたデータの結果
 
     """
+    if class_range is None:
+        class_range = ["0"]
+
     lines = read_text_file(file_path, "\n")
-    retation = ""
+    retation = []
     for line in lines:
         if line:
             data = line.split()
             if (
-                data[0] in class_range
+                len(data) >= 5
+                and data[0] in class_range
                 and data[1]
                 and data[2]
                 and float(data[3]) > 0.1
                 and float(data[4]) > 0.1
             ):
-                retation = " ".join(data[:5])
+                retation.append(" ".join(data[:5]))
 
-    return retation
+    return "\n".join(retation)
 
 
 def recycle_annotation_file(
-    src: Union[str, Path], dst: Union[str, Path] = "new", class_range: List[str] = ["0"]
+    src: Union[str, Path],
+    dst: Union[str, Path] = "new",
+    class_range: Optional[List[str]] = None,
 ) -> None:
     """
     注釈ファイルを再利用して新しいファイルに保存します。
@@ -118,7 +116,9 @@ folder_path = r"C:\AI_projectg\yolov5\runs\detect\exp"  # フォルダのパス
 # remove_empty_files(folder_path)
 
 
-def yaml_create(input_path: Union[str, Path], extension: str = "", data_mode: str = "w") -> None:
+def yaml_create(
+    input_path: Union[str, Path], extension: str = "", data_mode: str = "w"
+) -> None:
     """
     概要:
         指定されたディレクトリ内のテキストファイルを元に、txtファイルとdata.yamlを作成します。
@@ -156,7 +156,7 @@ def yaml_create(input_path: Union[str, Path], extension: str = "", data_mode: st
 
         else:
             for image_extension in (".jpg", ".png", ".jpeg"):
-                input_images = input_txt.stem + image_extension
+                input_images = input_txt.parent / (input_txt.stem + image_extension)
                 if input_images in learn_file:
                     output_list.append(f"{input_images}\n{input_txt}\n")
                     break
@@ -175,9 +175,15 @@ def yaml_create(input_path: Union[str, Path], extension: str = "", data_mode: st
     write_file(test_path, "".join(natsorted(test_list)))
 
     # classesからdata.yamlのデータ作成
+    data_yaml = []
     for classes in learn_file:
         if "classes" in classes.as_posix():
-            data_yaml = read_text_file(classes, "\n")[:-1]
+            data_yaml = [
+                line.strip() for line in read_text_file(classes, "\n") if line.strip()
+            ]
+            break
+    if not data_yaml:
+        raise ValueError("classes.txt（クラス名の一覧）が見つかりませんでした。")
 
     # なぜかここでやらないとうまくいかなかった(コードの書き方に問題があるのかも)
     from ruamel import yaml

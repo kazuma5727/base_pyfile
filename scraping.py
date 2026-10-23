@@ -2,7 +2,7 @@ import os
 import time
 from logging import NullHandler, getLogger
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
 import requests
 
@@ -12,7 +12,7 @@ logger = getLogger("log").getChild(__name__)
 logger.addHandler(NullHandler())
 
 
-def download_image(url: str, filename: Union[str, Path] = None) -> bool:
+def download_image(url: str, filename: Optional[Union[str, Path]] = None) -> bool:
     """
     指定されたURLから画像をダウンロードし、指定されたファイル名で保存する。
 
@@ -36,7 +36,16 @@ def download_image(url: str, filename: Union[str, Path] = None) -> bool:
 
     # 拡張子をチェックして、指定されたものでなければデフォルトの拡張子にする
     _, ext = os.path.splitext(url)
-    if not ext.lower() in [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".svg", ".webp"]:
+    if ext.lower() not in [
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".bmp",
+        ".tiff",
+        ".svg",
+        ".webp",
+    ]:
         ext = ".png"
 
     # ファイル名が指定されていない場合はタイムスタンプでファイル名を生成する

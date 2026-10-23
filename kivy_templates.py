@@ -1,6 +1,5 @@
 import configparser
 import os
-import sys
 from concurrent.futures import ThreadPoolExecutor
 from logging import NullHandler, getLogger
 from pathlib import Path
@@ -10,23 +9,15 @@ from kivy.app import App
 from kivy.clock import Clock
 from kivy.config import Config
 from kivy.core.text import DEFAULT_FONT, LabelBase
+from kivy.graphics.texture import Texture
 from kivy.lang import Builder
 from kivy.properties import BooleanProperty, NumericProperty, StringProperty
 from kivy.resources import resource_add_path
 from kivy.uix.widget import Widget
-from kivy.graphics.texture import Texture
 
 from base_pyfile import (
-    get_all_files,
-    get_all_subfolders,
-    get_files,
     get_log_handler,
-    logger_timer,
-    make_directory,
     make_logger,
-    read_text_file,
-    unique_path,
-    write_file,
 )
 
 logger = getLogger("log").getChild(__name__)
@@ -164,12 +155,15 @@ class ImageWidget(Widget):
         # フレームを読み込み
         # ret, self.frame = self.cap.read()
         # Kivy Textureに変換
+        import cv2
+
         buf = cv2.flip(self.frame, 0).tostring()
-        texture = Texture.create(size=(self.frame.shape[1], self.frame.shape[0]), colorfmt="bgr")
+        texture = Texture.create(
+            size=(self.frame.shape[1], self.frame.shape[0]), colorfmt="bgr"
+        )
         texture.blit_buffer(buf, colorfmt="bgr", bufferfmt="ubyte")
         # インスタンスのtextureを変更
         self.ids.camera.texture = texture
-
 
     def update_progress(self, iterable):
         for e, item in enumerate(iterable, 1):
